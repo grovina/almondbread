@@ -6,10 +6,45 @@
 }
 
 .sequence-info {
-  margin: 1rem 0;
+  margin: 0.75rem 0;
   padding: 1rem;
   background: var(--background);
-  border-radius: 0.5rem;
+  border-radius: 0.75rem;
+}
+
+.info-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 0;
+}
+
+.info-row .label {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  min-width: 80px;
+  flex-shrink: 0;
+}
+
+.info-row .value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9375rem;
+  color: var(--text);
+  font-weight: 500;
+  flex: 1;
+}
+
+.info-row .value.converges {
+  color: var(--success);
+}
+
+.info-row .value.diverges {
+  color: var(--error);
+}
+
+.info-row:not(:last-child) {
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border);
 }
 
 .sequence-point {
@@ -44,24 +79,62 @@
   font-size: 0.875rem;
 }
 
-.sequence-step {
-  display: grid;
-  grid-template-columns: 3rem 1fr auto;
-  gap: 1rem;
-  padding: 0.5rem;
+.sequence-list {
+  margin-top: 1rem;
+  background: var(--background);
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.panel-subheader {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 0.75rem 1rem;
+  background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
 
-.sequence-step:last-child {
-  border-bottom: none;
+.sequence-step {
+  display: flex;
+  align-items: center;
+  padding: 0.625rem 1rem;
+  transition: background-color 0.2s;
 }
 
-.step-index {
+.sequence-step:hover {
+  background: var(--surface);
+}
+
+.sequence-step .step-number {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.875rem;
   color: var(--text-secondary);
+  width: 2rem;
+  flex-shrink: 0;
 }
 
-.step-value {
+.sequence-step .step-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.875rem;
   color: var(--text);
+}
+
+.sequence-step:not(:last-child) {
+  border-bottom: 1px solid var(--border);
+}
+
+.sequence-step:first-of-type .step-value {
+  color: var(--primary);
+}
+
+.sequence-step:last-of-type .step-value {
+  color: var(--success);
+  font-weight: 500;
+}
+
+.sequence-step:last-of-type .step-value.diverges {
+  color: var(--error);
 }
 
 .step-abs {
