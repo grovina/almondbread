@@ -78,34 +78,23 @@ export class MandelbrotRenderer {
     // Split the area into chunks with progressive detail
     const xChunks = Math.ceil(initialResolution / this.chunkSize);
     const yChunks = Math.ceil(initialResolution / this.chunkSize);
-    const dx = (xRange[1] - xRange[0]) / xChunks;
-    const dy = (yRange[1] - yRange[0]) / yChunks;
 
     this.chunks = [];
     
-    // Generate chunks in a spiral pattern from center outward
-    const centerX = (xRange[0] + xRange[1]) / 2;
-    const centerY = (yRange[0] + yRange[1]) / 2;
-    
-    for (let ring = 0; ring < Math.max(xChunks, yChunks); ring++) {
-      for (let i = -ring; i <= ring; i++) {
-        for (let j = -ring; j <= ring; j++) {
-          if (Math.abs(i) === ring || Math.abs(j) === ring) {
-            const chunk = {
-              xStart: centerX + i * dx,
-              xEnd: centerX + (i + 1) * dx,
-              yStart: centerY + j * dy,
-              yEnd: centerY + (j + 1) * dy,
-              resolution: this.chunkSize,
-              maxIterations
-            };
-            
-            if (chunk.xStart >= xRange[0] && chunk.xEnd <= xRange[1] &&
-                chunk.yStart >= yRange[0] && chunk.yEnd <= yRange[1]) {
-              this.chunks.push(chunk);
-            }
-          }
-        }
+    // Calculate chunks in a grid pattern instead of spiral
+    const xStep = (xRange[1] - xRange[0]) / xChunks;
+    const yStep = (yRange[1] - yRange[0]) / yChunks;
+
+    for (let i = 0; i < xChunks; i++) {
+      for (let j = 0; j < yChunks; j++) {
+        this.chunks.push({
+          xStart: xRange[0] + i * xStep,
+          xEnd: xRange[0] + (i + 1) * xStep,
+          yStart: yRange[0] + j * yStep,
+          yEnd: yRange[0] + (j + 1) * yStep,
+          resolution: this.chunkSize,
+          maxIterations
+        });
       }
     }
 
@@ -117,5 +106,9 @@ export class MandelbrotRenderer {
   terminate() {
     this.abortController?.abort();
     this.worker.terminate();
+  }
+
+  public getCache(): Map<string, AnalysisResult> {
+    return this.cache;
   }
 } 

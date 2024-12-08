@@ -151,35 +151,28 @@ export const App: React.FC = () => {
   }, [transform, calculateGridSpacing]);
 
   const handleShowMandelbrot = useCallback(() => {
-    const plotWidth = plotDimensions.width;
-    const plotHeight = plotDimensions.height;
-    
-    const getDataCoord = (screenX: number, screenY: number) => ({
-      x: (screenX - plotWidth / 2) / (plotWidth * transform.k) - transform.x,
-      y: (plotHeight / 2 - screenY) / (plotHeight * transform.k) - transform.y
-    });
-    
-    const topLeft = getDataCoord(0, 0);
-    const bottomRight = getDataCoord(plotWidth, plotHeight);
+    // Use fixed coordinates for the classic Mandelbrot view
+    const xRange: [number, number] = [-2.5, 1];
+    const yRange: [number, number] = [-1.25, 1.25];
     
     // Use much higher resolution since we're now progressive
     const resolution = 500;
     
     rendererRef.current?.generatePoints(
-      [topLeft.x, bottomRight.x],
-      [bottomRight.y, topLeft.y],
+      xRange,
+      yRange,
       resolution,
       parameters.maxIterations,
       (progress: number) => {
         setRenderProgress(progress);
         setPlotState(prev => ({
           ...prev,
-          points: new Map(rendererRef.current?.cache),
+          points: new Map(rendererRef.current?.getCache()),
         }));
       },
       () => setRenderProgress(1)
     );
-  }, [transform, parameters.maxIterations, plotDimensions]);
+  }, [parameters.maxIterations]);
 
   const selectedResult = plotState.selectedPoint 
     ? plotState.points.get(`${plotState.selectedPoint.x},${plotState.selectedPoint.y}`)
@@ -214,6 +207,7 @@ export const App: React.FC = () => {
             onPointClick={handlePointClick}
             onZoomChange={handleZoomChange}
             transform={transform}
+            maxIterations={parameters.maxIterations}
           />
         </div>
         

@@ -12,6 +12,7 @@ interface PlotProps {
   onPointClick: (point: Point) => void;
   onZoomChange: (transform: ViewTransform) => void;
   transform: ViewTransform;
+  maxIterations: number;
 }
 
 interface ViewTransform {
@@ -20,7 +21,7 @@ interface ViewTransform {
   y: number;
 }
 
-export const Plot: React.FC<PlotProps> = ({ options, state, onPointClick, onZoomChange, transform }) => {
+export const Plot: React.FC<PlotProps> = ({ options, state, onPointClick, onZoomChange, transform, maxIterations }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const plotRef = useRef<SVGGElement>(null);
   const zoomBehaviorRef = useRef<ZoomBehavior<SVGSVGElement, unknown>>();
@@ -176,9 +177,10 @@ export const Plot: React.FC<PlotProps> = ({ options, state, onPointClick, onZoom
     pointsEnter.merge(pointsSelection)
       .attr('cx', ([key]) => xScale(parseFloat(key.split(',')[0])))
       .attr('cy', ([key]) => yScale(parseFloat(key.split(',')[1])))
-      .attr('r', 5 / transform.k)
-      .attr('class', ([, result]) => 
-        `point ${result.behavior === 'converges' ? 'converges' : 'diverges'}`
+      .attr('r', 2.5)
+      .attr('class', ([, result]) => `point ${result.behavior}`)
+      .style('--escape-ratio', ([, result]) => 
+        result.escapeTime ? Math.min(result.escapeTime / maxIterations, 1) : 1
       );
 
     // Update selected point
@@ -189,7 +191,7 @@ export const Plot: React.FC<PlotProps> = ({ options, state, onPointClick, onZoom
         return x === state.selectedPoint.x && y === state.selectedPoint.y;
       });
 
-  }, [options, state, transform]);
+  }, [options, state, transform, maxIterations]);
 
   return (
     <div className="plot">
