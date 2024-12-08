@@ -1,7 +1,5 @@
-import { axisBottom, axisLeft } from 'd3-axis';
 import { scaleLinear } from 'd3-scale';
 import { select } from 'd3-selection';
-import { transition } from 'd3-transition';
 import { zoom, ZoomBehavior } from 'd3-zoom';
 import React, { useCallback, useEffect, useRef } from 'react';
 import { AnalysisResult, PlotOptions, PlotState, Point } from '../types';
@@ -13,6 +11,8 @@ interface PlotProps {
   onZoomChange: (transform: ViewTransform) => void;
   transform: ViewTransform;
   maxIterations: number;
+  width: number;
+  height: number;
 }
 
 interface ViewTransform {
@@ -21,63 +21,138 @@ interface ViewTransform {
   y: number;
 }
 
-export const Plot: React.FC<PlotProps> = ({ options, state, onPointClick, onZoomChange, transform, maxIterations }) => {
-  const svgRef = useRef<SVGSVGElement>(null);
-  const plotRef = useRef<SVGGElement>(null);
-  const zoomBehaviorRef = useRef<ZoomBehavior<SVGSVGElement, unknown>>();
+export const Plot: React.FC<PlotProps> = ({ options, state, onPointClick, onZoomChange, transform, maxIterations, width, height }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const offscreenRef = useRef<HTMLCanvasElement | null>(null);
+  const zoomBehaviorRef = useRef<ZoomBehavior<HTMLCanvasElement, unknown>>();
+
+  // Define scales
+  const xScale = scaleLinear()
+    .domain(options.xRange)
+    .range([0, width]);
+
+  const yScale = scaleLinear()
+    .domain(options.yRange)
+    .range([height, 0]);
+
+  // Create offscreen canvas for caching
+  useEffect(() => {
+    offscreenRef.current = document.createElement('canvas');
+    offscreenRef.current.width = width;
+    offscreenRef.current.height = height;
+  }, [width, height]);
+
+  // Render points to offscreen canvas
+  const renderToCanvas = useCallback((points: Map<string, AnalysisResult>) => {
+    const canvas = offscreenRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d')!;
+    ctx.clearRect(0, 0, width, height);
+
+    // Batch points by color for better performance
+    const batches = new Map<string, Point[]>();
+    
+    points.forEach((result, key) => {
+      const [x, y] = key.split(',').map(parseFloat);
+      const color = result.behavior === 'converges' 
+        ? 'black'
+        : `hsl(${result.escapeTime! / maxIterations * 360}, 100%, ${(1 - result.escapeTime! / maxIterations) * 50 + 25}%)`;
+      
+      if (!batches.has(color)) batches.set(color, []);
+      batches.get(color)!.push({ x, y });
+    });
+
+    // Draw points by color batches
+    batches.forEach((points, color) => {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      points.forEach(p => {
+        const screenX = xScale(p.x);
+        const screenY = yScale(p.y);
+        ctx.rect(screenX, screenY, 1, 1);
+      });
+      ctx.fill();
+    });
+  }, [width, height, xScale, yScale, maxIterations]);
+
+  // Update visible canvas and render points
+  useEffect(() => {
+    console.log('Canvas dimensions:', { width, height });
+    if (!canvasRef.current) return;
+
+    // Render points to offscreen canvas first
+    renderToCanvas(state.points);
+    console.log('Points rendered:', state.points.size);
+
+    // Then update visible canvas with transform
+    const canvas = canvasRef.current;
+    const offscreen = offscreenRef.current;
+    if (!canvas || !offscreen) return;
+
+    const ctx = canvas.getContext('2d')!;
+    ctx.clearRect(0, 0, width, height);
+    
+    // Apply transform
+    ctx.save();
+    ctx.translate(transform.x, transform.y);
+    ctx.scale(transform.k, transform.k);
+    
+    // Draw cached content
+    ctx.drawImage(offscreen, 0, 0);
+    
+    ctx.restore();
+  }, [state.points, transform, width, height, renderToCanvas]);
 
   // Setup zoom behavior
   useEffect(() => {
-    if (!svgRef.current) return;
+    if (!canvasRef.current) return;
     
-    // Enable transitions
-    transition();
-
-    const zoomBehavior = zoom<SVGSVGElement, unknown>()
+    const zoomBehavior = zoom<HTMLCanvasElement, unknown>()
       .scaleExtent([0.1, 50])
       .on('zoom', (event) => {
         onZoomChange(event.transform);
       });
 
     zoomBehaviorRef.current = zoomBehavior;
-    select(svgRef.current).call(zoomBehavior);
+    select(canvasRef.current).call(zoomBehavior);
 
     return () => {
-      select(svgRef.current!).on('.zoom', null);
+      select(canvasRef.current!).on('.zoom', null);
     };
   }, [onZoomChange]);
 
   const handleZoomIn = useCallback(() => {
-    if (!svgRef.current || !zoomBehaviorRef.current) return;
-    select(svgRef.current)
+    if (!canvasRef.current || !zoomBehaviorRef.current) return;
+    select(canvasRef.current)
       .transition()
       .duration(300)
       .call(zoomBehaviorRef.current.scaleBy, 1.5);
   }, []);
 
   const handleZoomOut = useCallback(() => {
-    if (!svgRef.current || !zoomBehaviorRef.current) return;
-    select(svgRef.current)
+    if (!canvasRef.current || !zoomBehaviorRef.current) return;
+    select(canvasRef.current)
       .transition()
       .duration(300)
       .call(zoomBehaviorRef.current.scaleBy, 0.75);
   }, []);
 
   const handleReset = useCallback(() => {
-    if (!svgRef.current || !zoomBehaviorRef.current) return;
-    select(svgRef.current)
+    if (!canvasRef.current || !zoomBehaviorRef.current) return;
+    select(canvasRef.current)
       .transition()
       .duration(300)
       .call(zoomBehaviorRef.current.transform, zoom().transform);
   }, []);
 
-  const handleSvgClick = useCallback((event: React.MouseEvent<SVGSVGElement>) => {
-    if (!svgRef.current) return;
+  const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current) return;
 
-    const svg = svgRef.current;
-    const rect = svg.getBoundingClientRect();
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
     
-    // Get coordinates relative to SVG
+    // Get coordinates relative to canvas
     const x = (event.clientX - rect.left - transform.x) / transform.k;
     const y = (event.clientY - rect.top - transform.y) / transform.k;
 
@@ -96,108 +171,6 @@ export const Plot: React.FC<PlotProps> = ({ options, state, onPointClick, onZoom
     onPointClick({ x: domainX, y: domainY });
   }, [options, onPointClick, transform]);
 
-  useEffect(() => {
-    if (!svgRef.current || !plotRef.current) return;
-
-    const svg = select(svgRef.current);
-    const plot = select(plotRef.current);
-
-    // Set up scales without zoom transform
-    const xScale = scaleLinear()
-      .domain([options.xRange[0], options.xRange[1]])
-      .range([0, options.width]);
-
-    const yScale = scaleLinear()
-      .domain([options.yRange[0], options.yRange[1]])
-      .range([options.height, 0]);
-
-    // Create rescaled versions for the axes
-    const xScaleAxis = scaleLinear()
-      .domain([
-        options.xRange[0] - transform.x / (options.width * transform.k) * (options.xRange[1] - options.xRange[0]),
-        options.xRange[1] + (options.width - transform.x - options.width) / (options.width * transform.k) * (options.xRange[1] - options.xRange[0])
-      ])
-      .range([0, options.width]);
-
-    const yScaleAxis = scaleLinear()
-      .domain([
-        options.yRange[0] - transform.y / (options.height * transform.k) * (options.yRange[1] - options.yRange[0]),
-        options.yRange[1] + (options.height - transform.y - options.height) / (options.height * transform.k) * (options.yRange[1] - options.yRange[0])
-      ])
-      .range([options.height, 0]);
-
-    // Set up axes with rescaled versions
-    const xAxis = axisBottom(xScaleAxis)
-      .tickSize(-options.height); // Add grid lines
-
-    const yAxis = axisLeft(yScaleAxis)
-      .tickSize(-options.width); // Add grid lines
-
-    // Create a clip path to hide axis overflow
-    svg.select('defs').remove(); // Remove any existing defs
-    svg.append('defs')
-      .append('clipPath')
-      .attr('id', 'plot-area')
-      .append('rect')
-      .attr('width', options.width)
-      .attr('height', options.height);
-
-    // Position axes at the edges and apply clip path
-    svg.select<SVGGElement>('.x-axis')
-      .attr('transform', `translate(0,${options.height})`)
-      .call(xAxis)
-      .call(g => g.select('.domain').attr('stroke-width', 2)); // Make axis line thicker
-
-    svg.select<SVGGElement>('.y-axis')
-      .attr('transform', 'translate(0,0)')
-      .call(yAxis)
-      .call(g => g.select('.domain').attr('stroke-width', 2)); // Make axis line thicker
-
-    // Apply clip path to plot content
-    plot.attr('clip-path', 'url(#plot-area)');
-
-    // Transform only the plot content
-    plot.select('.points')
-      .attr('transform', `translate(${transform.x},${transform.y}) scale(${transform.k})`);
-
-    // Update points
-    type PointDatum = [string, AnalysisResult];
-    const pointsSelection = plot.select<SVGGElement>('.points')
-      .selectAll<SVGCircleElement, PointDatum>('circle')
-      .data(
-        Array.from(state.points.entries()),
-        (d: PointDatum) => d[0]
-      );
-
-    pointsSelection.exit().remove();
-
-    const pointsEnter = pointsSelection.enter()
-      .append('circle');
-
-    pointsEnter.merge(pointsSelection)
-      .attr('cx', ([key]) => xScale(parseFloat(key.split(',')[0])))
-      .attr('cy', ([key]) => yScale(parseFloat(key.split(',')[1])))
-      .attr('r', ([, result], i, nodes) => {
-        const element = nodes[i];
-        if (element.classList.contains('selected')) return 3 / transform.k;
-        if (element.matches(':hover')) return 3 / transform.k;
-        return 1 / transform.k;
-      })
-      .attr('class', ([, result]) => `point ${result.behavior}`)
-      .style('--escape-ratio', ([, result]) => 
-        result.escapeTime ? Math.min(result.escapeTime / maxIterations, 1) : 1
-      );
-
-    // Update selected point
-    plot.selectAll<SVGCircleElement, PointDatum>('circle')
-      .classed('selected', ([key]) => {
-        if (!state.selectedPoint) return false;
-        const [x, y] = key.split(',').map(parseFloat);
-        return x === state.selectedPoint.x && y === state.selectedPoint.y;
-      });
-
-  }, [options, state, transform, maxIterations]);
-
   return (
     <div className="plot">
       <div className="plot-controls">
@@ -205,18 +178,23 @@ export const Plot: React.FC<PlotProps> = ({ options, state, onPointClick, onZoom
         <button onClick={handleZoomOut} className="plot-control" title="Zoom Out">−</button>
         <button onClick={handleReset} className="plot-control" title="Reset View">↺</button>
       </div>
-      <svg
-        ref={svgRef}
-        width={options.width}
-        height={options.height}
-        className="plot-svg"
-        onClick={handleSvgClick}
-      >
-        <g ref={plotRef} className="plot-content">
-          <g className="points" />
-          <g className="x-axis" />
-          <g className="y-axis" />
-        </g>
+      <canvas
+        ref={canvasRef}
+        width={width}
+        height={height}
+        className="plot-canvas"
+        onClick={handleCanvasClick}
+      />
+      {/* Overlay SVG for interactive elements */}
+      <svg className="plot-overlay">
+        {state.selectedPoint && (
+          <circle
+            cx={xScale(state.selectedPoint.x)}
+            cy={yScale(state.selectedPoint.y)}
+            r={3}
+            className="selected-point"
+          />
+        )}
       </svg>
     </div>
   );

@@ -102,14 +102,13 @@ export const App: React.FC = () => {
       const gridResults = computeGrid(
         c, 
         parameters.gridSize, 
-        calculateGridSpacing(transform), // Use current optimal spacing
+        calculateGridSpacing(transform),
         parameters.z0, 
         parameters.maxIterations
       );
       setPlotState(prev => ({
         ...prev,
         points: new Map([...prev.points, ...gridResults]),
-        selectedPoint: point
       }));
     } else {
       console.log('Computing sequence...');
@@ -151,11 +150,22 @@ export const App: React.FC = () => {
   }, [transform, calculateGridSpacing]);
 
   const handleShowMandelbrot = useCallback(() => {
+    setPlotState(prev => ({ 
+      ...prev, 
+      selectedPoint: undefined,
+      gridEnabled: false
+    }));
+
     const xRange: [number, number] = [-2.5, 1];
     const yRange: [number, number] = [-1.25, 1.25];
     
-    // Lower resolution for better performance
-    const resolution = 200;
+    // Calculate resolution based on viewport
+    const viewportWidth = plotDimensions.width / transform.k;
+    const viewportHeight = plotDimensions.height / transform.k;
+    const resolution = Math.min(
+      Math.ceil(Math.max(viewportWidth, viewportHeight) / 2),
+      200
+    );
     
     rendererRef.current?.generatePoints(
       xRange,
@@ -171,7 +181,7 @@ export const App: React.FC = () => {
       },
       () => setRenderProgress(1)
     );
-  }, [parameters.maxIterations]);
+  }, [parameters.maxIterations, plotDimensions, transform]);
 
   const selectedResult = plotState.selectedPoint 
     ? plotState.points.get(`${plotState.selectedPoint.x},${plotState.selectedPoint.y}`)
@@ -207,6 +217,8 @@ export const App: React.FC = () => {
             onZoomChange={handleZoomChange}
             transform={transform}
             maxIterations={parameters.maxIterations}
+            width={plotDimensions.width}
+            height={plotDimensions.height}
           />
         </div>
         
