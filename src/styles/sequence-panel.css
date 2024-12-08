@@ -92,26 +92,76 @@
   background: var(--surface);
   border-radius: 0.375rem;
   margin-top: 1rem;
+  padding: 1rem;
+  overflow: visible;
 }
 
 .sequence-plot .axis {
   stroke: var(--border);
   stroke-width: 1;
-  stroke-opacity: 0.5;
+  stroke-opacity: 0.3;
 }
 
 .sequence-plot .sequence-line {
   stroke: var(--primary);
-  stroke-width: 1.5;
+  stroke-width: 1.2;
+  marker-end: url(#arrowhead);
+  opacity: 0;
 }
 
 .sequence-plot .sequence-point {
   fill: var(--primary);
   stroke: var(--surface);
   stroke-width: 1;
+  opacity: 0;
 }
 
+.sequence-plot .sequence-point.final-point {
+  fill: var(--success);
+  stroke: var(--surface);
+  stroke-width: 2;
+  filter: drop-shadow(0 0 2px var(--success-dark));
+}
+
+.sequence-plot .sequence-arrow {
+  fill: var(--primary);
+}
+
+@keyframes drawLine {
+  0% {
+    opacity: 0;
+    stroke-dasharray: 1000;
+    stroke-dashoffset: 1000;
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    stroke-dasharray: 1000;
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Hover effects */
 .sequence-plot .sequence-point:hover {
   fill: var(--primary-dark);
   r: 6;
-} 
+  filter: drop-shadow(0 0 2px var(--primary));
+  transition: all 0.2s ease;
+}
+
+.sequence-plot .sequence-point.final-point:hover {
+  fill: var(--success-dark);
+  filter: drop-shadow(0 0 3px var(--success));
+}
+ 
