@@ -155,7 +155,6 @@
 /* Hover effects */
 .sequence-plot .sequence-point:hover {
   fill: var(--primary-dark);
-  r: 6;
   filter: drop-shadow(0 0 2px var(--primary));
   transition: all 0.2s ease;
 }
@@ -163,5 +162,71 @@
 .sequence-plot .sequence-point.final-point:hover {
   fill: var(--success-dark);
   filter: drop-shadow(0 0 3px var(--success));
+}
+
+/* Final point styles */
+.sequence-plot .final-point {
+  transform-origin: center;
+  opacity: 0;
+}
+
+.sequence-plot .final-point.diverges {
+  fill: none;
+  stroke: var(--error);
+  stroke-width: 2;
+}
+
+.sequence-plot .final-point.diverges .explosion-x {
+  stroke: var(--error);
+  stroke-width: 2;
+}
+
+.sequence-plot .final-point.diverges .explosion-plus {
+  stroke: var(--error);
+  stroke-width: 1.5;
+}
+
+.sequence-plot .final-point.converges {
+  fill: none;
+  stroke: var(--success);
+  stroke-width: 2;
+}
+
+.sequence-plot .final-point.converges .spiral-path {
+  stroke: var(--success);
+  stroke-width: 2;
+  fill: none;
+}
+
+.sequence-plot .final-point .marker {
+  transform-origin: center;
+  opacity: inherit;
+}
+
+/* Animations */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+    animation-play-state: running;
+  }
+  to {
+    transform: rotate(360deg);
+    animation-play-state: running;
+  }
+}
+
+@keyframes spiral {
+  0% {
+    transform: rotate(0deg) scale(1);
+    animation-play-state: running;
+  }
+  50% {
+    transform: rotate(180deg) scale(0.8);
+    animation-play-state: running;
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+    animation-play-state: running;
+  }
 }
  

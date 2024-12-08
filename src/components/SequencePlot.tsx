@@ -13,7 +13,7 @@ export const SequencePlot: React.FC<SequencePlotProps> = ({
   width = 200,
   height = 200,
 }) => {
-  const { xRange, yRange, points, lines } = useMemo(() => {
+  const { points, lines } = useMemo(() => {
     // Get all points from the sequence
     const points = result.sequence.map((point) => ({
       x: point.z.real,
@@ -59,7 +59,7 @@ export const SequencePlot: React.FC<SequencePlotProps> = ({
 
   const stepDuration = 0.5; // slightly longer duration for clearer steps
   const initialDelay = 0.5; // longer initial delay to clearly see z₀
-  const stepDelay = 0.8; // delay between steps
+  const stepDelay = 0.6; // delay between steps
 
   return (
     <svg width={width} height={height} className="sequence-plot">
@@ -76,6 +76,19 @@ export const SequencePlot: React.FC<SequencePlotProps> = ({
         >
           <polygon points="0 0, 6 2, 0 4" />
         </marker>
+
+        {/* Explosion marker for divergent sequences */}
+        <g id="explosion-marker">
+          <path d="M-6,-6 L6,6 M-6,6 L6,-6" className="explosion-x" />
+          <path d="M0,-8 L0,8 M-8,0 L8,0" className="explosion-plus" />
+        </g>
+
+        {/* Spiral marker for convergent sequences */}
+        <path
+          id="spiral-marker"
+          d="M0,0 a1,1 0 0,1 2,2 a3,3 0 0,0 4,4"
+          className="spiral-path"
+        />
       </defs>
 
       {/* Axes */}
@@ -97,7 +110,6 @@ export const SequencePlot: React.FC<SequencePlotProps> = ({
       {/* Rest of the sequence */}
       {lines.map((line, i) => (
         <g key={i} className="sequence-step">
-          {/* Line with arrow */}
           <line
             {...line}
             className="sequence-line"
@@ -107,17 +119,44 @@ export const SequencePlot: React.FC<SequencePlotProps> = ({
             }}
             markerEnd="url(#arrowhead)"
           />
-          {/* Point at the end of line */}
-          <circle
-            cx={points[i + 1].x}
-            cy={points[i + 1].y}
-            r={i === points.length - 2 ? 5 : 3}
-            className={`sequence-point ${i === points.length - 2 ? 'final-point' : ''}`}
-            style={{
-              animation: `fadeIn ${stepDuration}s ease-out forwards`,
-              animationDelay: `${initialDelay + stepDelay * (i + 1)}s`
-            }}
-          />
+          {i === points.length - 2 ? (
+            <g
+              transform={`translate(${points[i + 1].x},${points[i + 1].y})`}
+              className={`final-point ${result.behavior}`}
+              style={{
+                opacity: 0,
+                animation: `fadeIn ${stepDuration}s ease-out forwards`,
+                animationDelay: `${initialDelay + stepDelay * (i + 1)}s`
+              }}
+            >
+              <g
+                className="marker"
+                style={{
+                  animation: `${result.behavior === 'diverges' ? 'spin' : 'spiral'} 3s ease-in-out infinite`,
+                  animationDelay: `${initialDelay + stepDelay * (i + 1) + stepDuration}s`,
+                  animationPlayState: 'paused',
+                  animationFillMode: 'forwards'
+                }}
+              >
+                {result.behavior === 'diverges' ? (
+                  <use href="#explosion-marker" />
+                ) : (
+                  <use href="#spiral-marker" />
+                )}
+              </g>
+            </g>
+          ) : (
+            <circle
+              cx={points[i + 1].x}
+              cy={points[i + 1].y}
+              r={3}
+              className="sequence-point"
+              style={{
+                animation: `fadeIn ${stepDuration}s ease-out forwards`,
+                animationDelay: `${initialDelay + stepDelay * (i + 1)}s`
+              }}
+            />
+          )}
         </g>
       ))}
     </svg>
