@@ -1,0 +1,89 @@
+.sequence-panel {
+  padding: 1.5rem;
+  background: var(--surface);
+  border-radius: 0.75rem;
+  box-shadow: var(--shadow);
+}
+
+.sequence-info {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: var(--background);
+  border-radius: 0.5rem;
+}
+
+.sequence-point {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1rem;
+  color: var(--primary);
+  margin-bottom: 0.5rem;
+}
+
+.sequence-behavior {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.sequence-behavior.converges {
+  background: var(--success);
+  color: white;
+}
+
+.sequence-behavior.diverges {
+  background: var(--error);
+  color: white;
+}
+
+.sequence-viz {
+  margin: 1rem 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.875rem;
+}
+
+.sequence-step {
+  display: grid;
+  grid-template-columns: 3rem 1fr auto;
+  gap: 1rem;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.sequence-step:last-child {
+  border-bottom: none;
+}
+
+.step-index {
+  color: var(--text-secondary);
+}
+
+.step-value {
+  color: var(--text);
+}
+
+.step-abs {
+  color: var(--text-secondary);
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.detail-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.detail-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.875rem;
+  color: var(--text);
+} 

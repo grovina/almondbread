@@ -1,0 +1,52 @@
+.parameter-panel {
+  padding: 1.5rem;
+  background: var(--surface);
+  border-radius: 0.75rem;
+  box-shadow: var(--shadow);
+}
+
+.panel-header {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+}
+
+.panel-subheader {
+  font-size: 1rem;
+  font-weight: 500;
+  margin: 1rem 0;
+}
+
+.parameter-section {
+  margin-bottom: 1.5rem;
+}
+
+.control-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.input-group {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.compact-input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  background: var(--background);
+}
+
+.compact-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.slider {
+  flex: 1;
+  margin-top: 0.5rem;
+} 
