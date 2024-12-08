@@ -68,4 +68,30 @@ export function computeGrid(
   }
 
   return results;
+}
+
+export function generateMandelbrotPoints(
+  xRange: [number, number],
+  yRange: [number, number],
+  resolution: number = 100,
+  maxIterations: number = 100
+): Map<string, AnalysisResult> {
+  const points = new Map<string, AnalysisResult>();
+  const dx = (xRange[1] - xRange[0]) / resolution;
+  const dy = (yRange[1] - yRange[0]) / resolution;
+
+  for (let i = 0; i <= resolution; i++) {
+    for (let j = 0; j <= resolution; j++) {
+      const x = xRange[0] + i * dx;
+      const y = yRange[0] + j * dy;
+      const c = { real: x, imag: y };
+      const z0 = { real: 0, imag: 0 };
+      const result = computeSequence(z0, c, maxIterations);
+      
+      const key = `${x},${y}`;
+      points.set(key, result);
+    }
+  }
+  
+  return points;
 } 

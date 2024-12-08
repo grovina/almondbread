@@ -4,7 +4,7 @@ import { Plot } from './components/Plot';
 import { SequencePanel } from './components/SequencePanel';
 import { Toolbar } from './components/Toolbar';
 import { ComplexNumber, Parameters, PlotState, Point } from './types';
-import { computeGrid, computeSequence } from './utils/compute';
+import { computeGrid, computeSequence, generateMandelbrotPoints } from './utils/compute';
 
 const DEFAULT_PARAMETERS: Parameters = {
   z0: { real: 0, imag: 0 },
@@ -69,7 +69,7 @@ export const App: React.FC = () => {
     
     // No need to round to "nice" numbers since we want exact distribution
     return spacing;
-  }, [parameters.gridSize, DEFAULT_PLOT_OPTIONS.width, DEFAULT_PLOT_OPTIONS.height]);
+  }, [parameters.gridSize]);
 
   const handleZoomChange = useCallback((newTransform: ViewTransform) => {
     setTransform(newTransform);
@@ -142,6 +142,35 @@ export const App: React.FC = () => {
     });
   }, [transform, calculateGridSpacing]);
 
+  const handleShowMandelbrot = useCallback(() => {
+    // Get the plot dimensions in domain coordinates
+    const plotWidth = plotDimensions.width;
+    const plotHeight = plotDimensions.height;
+    
+    // Convert screen coordinates to domain coordinates
+    const getDataCoord = (screenX: number, screenY: number) => ({
+      x: (screenX - plotWidth / 2) / (plotWidth * transform.k) - transform.x,
+      y: (plotHeight / 2 - screenY) / (plotHeight * transform.k) - transform.y
+    });
+    
+    // Get visible area bounds in domain coordinates
+    const topLeft = getDataCoord(0, 0);
+    const bottomRight = getDataCoord(plotWidth, plotHeight);
+    
+    const mandelbrotPoints = generateMandelbrotPoints(
+      [topLeft.x, bottomRight.x],
+      [bottomRight.y, topLeft.y],
+      200,  // increased resolution for better detail
+      parameters.maxIterations
+    );
+
+    setPlotState(prev => ({
+      ...prev,
+      points: mandelbrotPoints,
+      selectedPoint: undefined
+    }));
+  }, [transform, parameters.maxIterations, plotDimensions.width, plotDimensions.height]);
+
   const selectedResult = plotState.selectedPoint 
     ? plotState.points.get(`${plotState.selectedPoint.x},${plotState.selectedPoint.y}`)
     : undefined;
@@ -154,6 +183,7 @@ export const App: React.FC = () => {
         onZoomOut={() => {}}
         onToggleGrid={handleToggleGrid}
         onClear={handleClear}
+        onShowMandelbrot={handleShowMandelbrot}
         isGridEnabled={plotState.gridEnabled}
       />
       

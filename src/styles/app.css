@@ -73,4 +73,13 @@
   background: var(--error);
   border-color: var(--error);
   color: white;
+}
+
+.tool-button.mandelbrot {
+  background: var(--primary);
+  color: white;
+}
+
+.tool-button.mandelbrot:hover {
+  background: var(--primary-dark);
 } 
