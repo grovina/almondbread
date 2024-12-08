@@ -57,8 +57,9 @@ export const SequencePlot: React.FC<SequencePlotProps> = ({
     return { xRange, yRange, points: transformedPoints, lines };
   }, [result, width, height]);
 
-  const stepDuration = 0.4; // seconds per step
-  const initialDelay = 0.2; // initial delay before sequence starts
+  const stepDuration = 0.5; // slightly longer duration for clearer steps
+  const initialDelay = 0.5; // longer initial delay to clearly see z₀
+  const stepDelay = 0.8; // delay between steps
 
   return (
     <svg width={width} height={height} className="sequence-plot">
@@ -88,7 +89,7 @@ export const SequencePlot: React.FC<SequencePlotProps> = ({
         r={3}
         className="sequence-point"
         style={{
-          animation: `fadeIn ${stepDuration/2}s ease-out forwards`,
+          animation: `fadeIn ${stepDuration}s ease-out forwards`,
           animationDelay: `${initialDelay}s`
         }}
       />
@@ -102,7 +103,7 @@ export const SequencePlot: React.FC<SequencePlotProps> = ({
             className="sequence-line"
             style={{
               animation: `drawLine ${stepDuration}s ease-out forwards`,
-              animationDelay: `${initialDelay + stepDuration * (i + 0.5)}s`
+              animationDelay: `${initialDelay + stepDelay * (i + 1)}s`
             }}
             markerEnd="url(#arrowhead)"
           />
@@ -113,8 +114,8 @@ export const SequencePlot: React.FC<SequencePlotProps> = ({
             r={i === points.length - 2 ? 5 : 3}
             className={`sequence-point ${i === points.length - 2 ? 'final-point' : ''}`}
             style={{
-              animation: `fadeIn ${stepDuration/2}s ease-out forwards`,
-              animationDelay: `${initialDelay + stepDuration * (i + 1)}s`
+              animation: `fadeIn ${stepDuration}s ease-out forwards`,
+              animationDelay: `${initialDelay + stepDelay * (i + 1)}s`
             }}
           />
         </g>
