@@ -1,19 +1,18 @@
 .plot {
   flex: 1;
   min-width: 0;
-  min-height: 400px;
   position: relative;
   background: var(--surface);
   border-radius: 0.75rem;
   box-shadow: var(--shadow-lg);
   overflow: hidden;
   cursor: crosshair;
+  display: flex;
 }
 
 .plot-svg {
+  flex: 1;
   display: block;
-  width: 100%;
-  height: 100%;
   background: var(--background);
   pointer-events: all;
 }
@@ -26,6 +25,7 @@
 .x-axis line,
 .y-axis line {
   stroke: var(--border);
+  stroke-opacity: 0.5;
 }
 
 .x-axis path,
@@ -39,33 +39,46 @@
   font-size: 0.75rem;
 }
 
+/* Make the main axis lines more prominent */
+.x-axis .domain,
+.y-axis .domain {
+  stroke: var(--text);
+  stroke-width: 2;
+}
+
+/* Hide grid lines that extend beyond the axis line */
+.x-axis .tick line {
+  transform: translateY(0.5px);
+}
+
+.y-axis .tick line {
+  transform: translateX(-0.5px);
+}
+
 /* Points */
 .point {
   transition: all 0.2s;
   cursor: pointer;
+  opacity: 0.8;
 }
 
 .point.converges {
   fill: var(--success);
-  stroke: var(--surface);
-  stroke-width: 1.5;
 }
 
 .point.diverges {
   fill: var(--error);
-  stroke: var(--surface);
-  stroke-width: 1.5;
 }
 
 .point:hover {
-  stroke-width: 2.5;
-  r: 6;
+  opacity: 1;
+  fill: var(--primary);
 }
 
 .point.selected {
+  opacity: 1;
   stroke: var(--primary);
-  stroke-width: 3;
-  r: 7;
+  stroke-width: 2;
 }
 
 /* Add these styles for the plot controls */

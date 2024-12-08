@@ -16,29 +16,28 @@ export const ParameterPanel: React.FC<ParameterPanelProps> = ({
       
       <div className="parameter-section">
         <label className="control-label">Initial Value (z₀)</label>
-        <div className="input-group">
+        <div className="complex-input-group">
           <input
             type="number"
-            className="compact-input"
+            className="complex-number-input"
             value={parameters.z0.real}
             onChange={(e) => 
               onChange({ 
                 z0: { ...parameters.z0, real: parseFloat(e.target.value) }
               })
             }
-            placeholder="Real Part"
             step="0.1"
           />
+          <span className="complex-separator">+ i</span>
           <input
             type="number"
-            className="compact-input"
+            className="complex-number-input"
             value={parameters.z0.imag}
             onChange={(e) => 
               onChange({ 
                 z0: { ...parameters.z0, imag: parseFloat(e.target.value) }
               })
             }
-            placeholder="Imaginary Part"
             step="0.1"
           />
         </div>

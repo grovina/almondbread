@@ -49,6 +49,7 @@ An interactive visualization tool for exploring sequences of the form z_{n+1} = 
    ```
 
    If you encounter a yarn-path error, run:
+
    ```bash
    yarn set version stable
    yarn install
@@ -106,4 +107,3 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 - Inspired by the mathematical beauty of the Mandelbrot set
 - Built with modern web technologies
 - UI design inspired by mathematical visualization tools
- 

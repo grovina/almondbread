@@ -53,13 +53,13 @@ export function computeGrid(
   maxIterations: number
 ): Map<string, AnalysisResult> {
   const results = new Map<string, AnalysisResult>();
-  const halfSize = (size - 1) * spacing / 2;
+  const offset = (size - 1) * spacing / 2;
 
   for (let i = 0; i < size; i++) {
     for (let j = 0; j < size; j++) {
       const c: ComplexNumber = {
-        real: center.real - halfSize + i * spacing,
-        imag: center.imag - halfSize + j * spacing
+        real: center.real - offset + i * spacing,
+        imag: center.imag - offset + j * spacing
       };
       
       const key = `${c.real},${c.imag}`;
