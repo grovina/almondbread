@@ -70,20 +70,69 @@ export function computeGrid(
   return results;
 }
 
+function getOptimalResolution(
+  xRange: [number, number],
+  yRange: [number, number],
+  screenWidth: number,
+  screenHeight: number
+): number {
+  // Calculate the domain-to-screen ratio
+  const domainWidth = Math.abs(xRange[1] - xRange[0]);
+  const domainHeight = Math.abs(yRange[1] - yRange[0]);
+  const pixelsPerUnit = Math.min(screenWidth / domainWidth, screenHeight / domainHeight);
+  
+  // Aim for roughly 1 point per 4-5 pixels for smooth appearance without excess
+  const pointSpacing = 4 / pixelsPerUnit;
+  
+  // Calculate how many points we need in each dimension
+  return Math.min(
+    Math.ceil(Math.max(domainWidth, domainHeight) / pointSpacing),
+    300 // Cap maximum resolution to prevent performance issues
+  );
+}
+
 export function generateMandelbrotPoints(
   xRange: [number, number],
   yRange: [number, number],
-  resolution: number = 100,
+  screenWidth: number,
+  screenHeight: number,
   maxIterations: number = 100
 ): Map<string, AnalysisResult> {
   const points = new Map<string, AnalysisResult>();
+  
+  // Get optimal resolution based on screen dimensions
+  const resolution = getOptimalResolution(xRange, yRange, screenWidth, screenHeight);
+  
   const dx = (xRange[1] - xRange[0]) / resolution;
   const dy = (yRange[1] - yRange[0]) / resolution;
+
+  // Quick escape test before computing sequence
+  const isLikelyInSet = (x: number, y: number): boolean => {
+    // Cardioid test
+    const q = (x - 0.25) ** 2 + y * y;
+    if (q * (q + (x - 0.25)) <= 0.25 * y * y) return true;
+    
+    // Period-2 bulb test
+    if ((x + 1) ** 2 + y * y <= 0.0625) return true;
+    
+    return false;
+  };
 
   for (let i = 0; i <= resolution; i++) {
     for (let j = 0; j <= resolution; j++) {
       const x = xRange[0] + i * dx;
       const y = yRange[0] + j * dy;
+      
+      // Skip points that are definitely in the set
+      if (isLikelyInSet(x, y)) {
+        const key = `${x},${y}`;
+        points.set(key, {
+          sequence: [{ z: { real: x, imag: y }, iteration: 0 }],
+          behavior: 'converges'
+        });
+        continue;
+      }
+      
       const c = { real: x, imag: y };
       const z0 = { real: 0, imag: 0 };
       const result = computeSequence(z0, c, maxIterations);

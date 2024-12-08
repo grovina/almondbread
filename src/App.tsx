@@ -4,7 +4,8 @@ import { Plot } from './components/Plot';
 import { SequencePanel } from './components/SequencePanel';
 import { Toolbar } from './components/Toolbar';
 import { ComplexNumber, Parameters, PlotState, Point } from './types';
-import { computeGrid, computeSequence, generateMandelbrotPoints } from './utils/compute';
+import { computeGrid, computeSequence } from './utils/compute';
+import { MandelbrotRenderer } from './utils/mandelbrot';
 
 const DEFAULT_PARAMETERS: Parameters = {
   z0: { real: 0, imag: 0 },
@@ -33,6 +34,8 @@ export const App: React.FC = () => {
   const [transform, setTransform] = useState<ViewTransform>({ k: 1, x: 0, y: 0 });
   const [plotDimensions, setPlotDimensions] = useState({ width: 800, height: 600 });
   const plotContainerRef = useRef<HTMLDivElement>(null);
+  const rendererRef = useRef<MandelbrotRenderer>();
+  const [renderProgress, setRenderProgress] = useState(0);
 
   useEffect(() => {
     const container = plotContainerRef.current;
@@ -50,6 +53,11 @@ export const App: React.FC = () => {
     updateDimensions(); // Initial measurement
 
     return () => resizeObserver.disconnect();
+  }, []);
+
+  useEffect(() => {
+    rendererRef.current = new MandelbrotRenderer();
+    return () => rendererRef.current?.terminate();
   }, []);
 
   const calculateGridSpacing = useCallback((transform: ViewTransform) => {
@@ -143,33 +151,35 @@ export const App: React.FC = () => {
   }, [transform, calculateGridSpacing]);
 
   const handleShowMandelbrot = useCallback(() => {
-    // Get the plot dimensions in domain coordinates
     const plotWidth = plotDimensions.width;
     const plotHeight = plotDimensions.height;
     
-    // Convert screen coordinates to domain coordinates
     const getDataCoord = (screenX: number, screenY: number) => ({
       x: (screenX - plotWidth / 2) / (plotWidth * transform.k) - transform.x,
       y: (plotHeight / 2 - screenY) / (plotHeight * transform.k) - transform.y
     });
     
-    // Get visible area bounds in domain coordinates
     const topLeft = getDataCoord(0, 0);
     const bottomRight = getDataCoord(plotWidth, plotHeight);
     
-    const mandelbrotPoints = generateMandelbrotPoints(
+    // Use much higher resolution since we're now progressive
+    const resolution = 500;
+    
+    rendererRef.current?.generatePoints(
       [topLeft.x, bottomRight.x],
       [bottomRight.y, topLeft.y],
-      200,  // increased resolution for better detail
-      parameters.maxIterations
+      resolution,
+      parameters.maxIterations,
+      (progress: number) => {
+        setRenderProgress(progress);
+        setPlotState(prev => ({
+          ...prev,
+          points: new Map(rendererRef.current?.cache),
+        }));
+      },
+      () => setRenderProgress(1)
     );
-
-    setPlotState(prev => ({
-      ...prev,
-      points: mandelbrotPoints,
-      selectedPoint: undefined
-    }));
-  }, [transform, parameters.maxIterations, plotDimensions.width, plotDimensions.height]);
+  }, [transform, parameters.maxIterations, plotDimensions]);
 
   const selectedResult = plotState.selectedPoint 
     ? plotState.points.get(`${plotState.selectedPoint.x},${plotState.selectedPoint.y}`)
