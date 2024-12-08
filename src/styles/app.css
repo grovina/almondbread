@@ -82,4 +82,20 @@
 
 .tool-button.mandelbrot:hover {
   background: var(--primary-dark);
+}
+
+.progress-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--surface);
+  z-index: 10;
+}
+
+.progress-bar {
+  height: 100%;
+  background: var(--primary);
+  transition: width 0.2s ease-out;
 } 
