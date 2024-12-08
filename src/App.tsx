@@ -1,5 +1,5 @@
-import { select } from 'd3-selection';
-import { ZoomBehavior, zoomIdentity } from 'd3-zoom';
+import { scaleLinear } from 'd3-scale';
+import { zoomIdentity, ZoomTransform } from 'd3-zoom';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ParameterPanel } from './components/ParameterPanel';
 import { Plot } from './components/Plot';
@@ -33,12 +33,11 @@ export const App: React.FC = () => {
     points: new Map(),
     gridEnabled: false
   });
-  const [transform, setTransform] = useState<ViewTransform>({ k: 1, x: 0, y: 0 });
+  const [transform, setTransform] = useState<ZoomTransform>(zoomIdentity);
   const [plotDimensions, setPlotDimensions] = useState({ width: 800, height: 600 });
   const plotContainerRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<MandelbrotRenderer>();
   const [renderProgress, setRenderProgress] = useState(0);
-  const zoomBehaviorRef = useRef<ZoomBehavior<HTMLCanvasElement, unknown> | null>(null);
 
   useEffect(() => {
     const container = plotContainerRef.current;
@@ -83,7 +82,7 @@ export const App: React.FC = () => {
   }, [parameters.gridSize]);
 
   const handleZoomChange = useCallback((newTransform: ViewTransform) => {
-    setTransform(newTransform);
+    setTransform(zoomIdentity.translate(newTransform.x, newTransform.y).scale(newTransform.k));
     if (plotState.gridEnabled) {
       setParameters(prev => ({
         ...prev,
@@ -126,11 +125,7 @@ export const App: React.FC = () => {
   }, [parameters, plotState.gridEnabled, transform, calculateGridSpacing]);
 
   const handleReset = useCallback(() => {
-    const canvas = plotContainerRef.current?.querySelector('canvas');
-    if (canvas && zoomBehaviorRef.current) {
-      select(canvas as HTMLCanvasElement)
-        .call(zoomBehaviorRef.current.transform, zoomIdentity);
-    }
+    setTransform(zoomIdentity);
   }, []);
 
   const handleClear = useCallback(() => {
@@ -155,30 +150,34 @@ export const App: React.FC = () => {
     });
   }, [transform, calculateGridSpacing]);
 
-  const handleShowMandelbrot = useCallback((
-    xRange: [number, number] = [-2.5, 1],
-    yRange: [number, number] = [-1.25, 1.25],
-    currentTransform?: ViewTransform
-  ) => {
-    console.log('Requesting new resolution:', {
-      xRange,
-      yRange,
-      transform: currentTransform,
-      dimensions: plotDimensions
-    });
+  const handleShowMandelbrot = useCallback(() => {
+    // Define initial scales
+    const xScale = scaleLinear()
+      .domain(DEFAULT_PLOT_OPTIONS.xRange)
+      .range([0, plotDimensions.width]);
 
-    // Calculate appropriate resolution based on zoom level
-    const resolution = currentTransform 
-      ? Math.ceil(Math.min(plotDimensions.width, plotDimensions.height) * currentTransform.k / 100) 
-      : Math.min(plotDimensions.width, plotDimensions.height) / 100;
+    const yScale = scaleLinear()
+      .domain(DEFAULT_PLOT_OPTIONS.yRange)
+      .range([plotDimensions.height, 0]);
 
-    // Update state with loading indicator
+    // Apply the current transform to the scales
+    const newXScale = transform.rescaleX(xScale);
+    const newYScale = transform.rescaleY(yScale);
+
+    // Get the visible domain ranges
+    const visibleXRange: [number, number] = [newXScale.invert(0), newXScale.invert(plotDimensions.width)];
+    const visibleYRange: [number, number] = [newYScale.invert(plotDimensions.height), newYScale.invert(0)];
+
+    console.log('Requesting Mandelbrot set for:', visibleXRange, visibleYRange);
+
+    // Calculate resolution based on zoom level
+    const resolution = Math.min(plotDimensions.width, plotDimensions.height) / 200;
+
     setRenderProgress(0);
-    
-    // Request new points at higher resolution
+
     rendererRef.current?.computeMandelbrot(
-      xRange,
-      yRange,
+      visibleXRange,
+      visibleYRange,
       resolution,
       parameters.maxIterations,
       (points, progress) => {
@@ -186,30 +185,14 @@ export const App: React.FC = () => {
         setRenderProgress(progress);
       }
     );
-  }, [parameters.maxIterations, plotDimensions]);
+  }, [parameters.maxIterations, plotDimensions, transform]);
 
   const handleZoomIn = useCallback(() => {
-    const canvas = plotContainerRef.current?.querySelector('canvas');
-    if (canvas && zoomBehaviorRef.current) {
-      const newTransform = zoomIdentity
-        .translate(transform.x, transform.y)
-        .scale(transform.k * 1.5);
-        
-      select(canvas as HTMLCanvasElement)
-        .call(zoomBehaviorRef.current.transform, newTransform);
-    }
+    setTransform(transform.scale(1.5));
   }, [transform]);
 
   const handleZoomOut = useCallback(() => {
-    const canvas = plotContainerRef.current?.querySelector('canvas');
-    if (canvas && zoomBehaviorRef.current) {
-      const newTransform = zoomIdentity
-        .translate(transform.x, transform.y)
-        .scale(transform.k * 0.75);
-        
-      select(canvas as HTMLCanvasElement)
-        .call(zoomBehaviorRef.current.transform, newTransform);
-    }
+    setTransform(transform.scale(0.75));
   }, [transform]);
 
   const selectedResult = plotState.selectedPoint 
@@ -224,7 +207,7 @@ export const App: React.FC = () => {
         onZoomOut={handleZoomOut}
         onToggleGrid={handleToggleGrid}
         onClear={handleClear}
-        onShowMandelbrot={() => handleShowMandelbrot()}
+        onShowMandelbrot={handleShowMandelbrot}
         isGridEnabled={plotState.gridEnabled}
       />
       
@@ -244,7 +227,6 @@ export const App: React.FC = () => {
             state={plotState}
             onPointClick={handlePointClick}
             onZoomChange={handleZoomChange}
-            transform={transform}
             maxIterations={parameters.maxIterations}
             width={plotDimensions.width}
             height={plotDimensions.height}

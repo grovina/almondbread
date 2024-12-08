@@ -1,19 +1,17 @@
 import { scaleLinear } from 'd3-scale';
 import { select } from 'd3-selection';
-import { zoom, zoomIdentity } from 'd3-zoom';
-import React, { useCallback, useEffect, useRef } from 'react';
-import { AnalysisResult, PlotOptions, PlotState, Point } from '../types';
+import { zoom, zoomIdentity, ZoomTransform } from 'd3-zoom';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { PlotOptions, PlotState, Point } from '../types';
 
 interface PlotProps {
   options: PlotOptions;
   state: PlotState;
   onPointClick: (point: Point) => void;
   onZoomChange: (transform: ViewTransform) => void;
-  transform: ViewTransform;
   maxIterations: number;
   width: number;
   height: number;
-  onShowMandelbrot?: (xRange: [number, number], yRange: [number, number], transform: ViewTransform) => void;
 }
 
 interface ViewTransform {
@@ -22,60 +20,26 @@ interface ViewTransform {
   y: number;
 }
 
-function getVisibleRange(transform: ViewTransform, options: PlotOptions): { 
-  xRange: [number, number], 
-  yRange: [number, number] 
-} {
-  return {
-    xRange: [
-      options.xRange[0] + (-transform.x / transform.k) * (options.xRange[1] - options.xRange[0]) / options.width,
-      options.xRange[1] + (-transform.x / transform.k) * (options.xRange[1] - options.xRange[0]) / options.width
-    ],
-    yRange: [
-      options.yRange[0] + (-transform.y / transform.k) * (options.yRange[1] - options.yRange[0]) / options.height,
-      options.yRange[1] + (-transform.y / transform.k) * (options.yRange[1] - options.yRange[0]) / options.height
-    ]
-  };
-}
-
-export const Plot: React.FC<PlotProps> = ({ options, state, onPointClick, onZoomChange, transform, maxIterations, width, height }) => {
+export const Plot: React.FC<PlotProps> = ({ options, state, onPointClick, onZoomChange, maxIterations, width, height }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const offscreenRef = useRef<HTMLCanvasElement | null>(null);
+  const [transform, setTransform] = useState<ZoomTransform>(zoomIdentity);
 
-  // Define scales for domain to screen conversion
+  // Define initial scales
   const xScale = scaleLinear()
     .domain(options.xRange)
     .range([0, width]);
 
   const yScale = scaleLinear()
     .domain(options.yRange)
-    .range([height, 0]); // Flip Y axis to match mathematical coordinates
+    .range([height, 0]); // Inverted Y-axis
 
-  // Initialize canvases
-  useEffect(() => {
-    const dpr = window.devicePixelRatio || 1;
-    const scaledWidth = width * dpr;
-    const scaledHeight = height * dpr;
-    
-    if (canvasRef.current) {
-      canvasRef.current.style.width = `${width}px`;
-      canvasRef.current.style.height = `${height}px`;
-      canvasRef.current.width = scaledWidth;
-      canvasRef.current.height = scaledHeight;
-    }
-
-    offscreenRef.current = document.createElement('canvas');
-    offscreenRef.current.width = scaledWidth;
-    offscreenRef.current.height = scaledHeight;
-  }, [width, height]);
-
-  // Setup zoom behavior with proper centering
   useEffect(() => {
     if (!canvasRef.current) return;
 
     const zoomBehavior = zoom<HTMLCanvasElement, unknown>()
       .scaleExtent([0.1, 50])
       .on('zoom', (event) => {
+        setTransform(event.transform);
         onZoomChange({
           k: event.transform.k,
           x: event.transform.x,
@@ -86,79 +50,58 @@ export const Plot: React.FC<PlotProps> = ({ options, state, onPointClick, onZoom
     select(canvasRef.current)
       .call(zoomBehavior);
 
-    // Set initial transform
-    if (transform.k !== 1 || transform.x !== 0 || transform.y !== 0) {
-      const d3Transform = zoomIdentity
-        .translate(transform.x, transform.y)
-        .scale(transform.k);
-      
-      select(canvasRef.current)
-        .call(zoomBehavior.transform, d3Transform);
-    }
-
     return () => {
       select(canvasRef.current).on('.zoom', null);
     };
   }, [onZoomChange]);
 
-  // Render points to offscreen canvas
-  const renderToCanvas = useCallback((points: Map<string, AnalysisResult>) => {
-    const canvas = offscreenRef.current;
-    if (!canvas) return;
+  // Handle canvas drawing
+  useEffect(() => {
+    if (!canvasRef.current) return;
 
-    const ctx = canvas.getContext('2d')!;
+    const ctx = canvasRef.current.getContext('2d')!;
     const dpr = window.devicePixelRatio || 1;
-    
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.save();
+    const scaledWidth = width * dpr;
+    const scaledHeight = height * dpr;
+
+    // Resize canvas for high DPI displays
+    canvasRef.current.width = scaledWidth;
+    canvasRef.current.height = scaledHeight;
     ctx.scale(dpr, dpr);
 
-    const pointSize = Math.max(1, Math.min(2, 1 / transform.k));
+    // Apply the zoom transform to scales
+    const newXScale = transform.rescaleX(xScale);
+    const newYScale = transform.rescaleY(yScale);
 
-    points.forEach((result, key) => {
+    // Clear canvas
+    ctx.clearRect(0, 0, width, height);
+
+    // Draw points
+    const pointSize = 2;
+    state.points.forEach((result, key) => {
       const [x, y] = key.split(',').map(parseFloat);
-      const screenX = xScale(x);
-      const screenY = yScale(y);
-      
+      const screenX = newXScale(x);
+      const screenY = newYScale(y);
+
       const color = result.behavior === 'converges' 
         ? 'black'
         : `hsl(${result.escapeTime! / maxIterations * 360}, 100%, ${(1 - result.escapeTime! / maxIterations) * 50 + 25}%)`;
 
       ctx.fillStyle = color;
-      ctx.fillRect(screenX - pointSize/2, screenY - pointSize/2, pointSize, pointSize);
+      ctx.fillRect(screenX - pointSize / 2, screenY - pointSize / 2, pointSize, pointSize);
     });
 
-    ctx.restore();
-  }, [transform.k, xScale, yScale, maxIterations]);
-
-  // Draw to visible canvas
-  useEffect(() => {
-    if (!canvasRef.current || !offscreenRef.current) return;
-
-    renderToCanvas(state.points);
-
-    const ctx = canvasRef.current.getContext('2d')!;
-    const dpr = window.devicePixelRatio || 1;
-
-    ctx.clearRect(0, 0, width * dpr, height * dpr);
-    ctx.save();
-    
-    // Scale for DPI
-    ctx.scale(dpr, dpr);
-    
-    // Apply zoom transform
-    ctx.translate(transform.x, transform.y);
-    ctx.scale(transform.k, transform.k);
-
-    // Draw the offscreen canvas
-    ctx.drawImage(
-      offscreenRef.current,
-      0, 0, width, height,
-      0, 0, width, height
-    );
-
-    ctx.restore();
-  }, [state.points, transform, width, height, renderToCanvas]);
+    // Highlight selected point
+    if (state.selectedPoint) {
+      ctx.strokeStyle = 'red';
+      ctx.lineWidth = 2;
+      const screenX = newXScale(state.selectedPoint.x);
+      const screenY = newYScale(state.selectedPoint.y);
+      ctx.beginPath();
+      ctx.arc(screenX, screenY, 5, 0, 2 * Math.PI);
+      ctx.stroke();
+    }
+  }, [state.points, state.selectedPoint, transform, width, height, xScale, yScale, maxIterations]);
 
   // Handle clicks
   const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
@@ -168,9 +111,11 @@ export const Plot: React.FC<PlotProps> = ({ options, state, onPointClick, onZoom
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
 
-    // Convert screen coordinates to domain coordinates
-    const domainX = xScale.invert((x - transform.x) / transform.k);
-    const domainY = yScale.invert((y - transform.y) / transform.k);
+    // Invert the transform to get domain coordinates
+    const newXScale = transform.rescaleX(xScale);
+    const newYScale = transform.rescaleY(yScale);
+    const domainX = newXScale.invert(x);
+    const domainY = newYScale.invert(y);
 
     onPointClick({ x: domainX, y: domainY });
   }, [xScale, yScale, transform, onPointClick]);
@@ -180,20 +125,8 @@ export const Plot: React.FC<PlotProps> = ({ options, state, onPointClick, onZoom
       <canvas
         ref={canvasRef}
         onClick={handleCanvasClick}
-        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+        style={{ width: '100%', height: '100%', cursor: 'crosshair' }}
       />
-      <svg 
-        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
-      >
-        {state.selectedPoint && (
-          <circle
-            cx={xScale(state.selectedPoint.x) * transform.k + transform.x}
-            cy={yScale(state.selectedPoint.y) * transform.k + transform.y}
-            r={3}
-            className="selected-point"
-          />
-        )}
-      </svg>
     </div>
   );
 }; 
