@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ParameterPanel } from './components/ParameterPanel';
 import { Plot } from './components/Plot';
 import { SequencePanel } from './components/SequencePanel';
@@ -15,9 +15,7 @@ const DEFAULT_PARAMETERS: Parameters = {
 
 const DEFAULT_PLOT_OPTIONS = {
   xRange: [-2, 0.5] as [number, number],
-  yRange: [-1.25, 1.25] as [number, number],
-  width: 800,
-  height: 600
+  yRange: [-1.25, 1.25] as [number, number]
 };
 
 interface ViewTransform {
@@ -33,6 +31,26 @@ export const App: React.FC = () => {
     gridEnabled: false
   });
   const [transform, setTransform] = useState<ViewTransform>({ k: 1, x: 0, y: 0 });
+  const [plotDimensions, setPlotDimensions] = useState({ width: 800, height: 600 });
+  const plotContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const container = plotContainerRef.current;
+    if (!container) return;
+
+    const updateDimensions = () => {
+      setPlotDimensions({
+        width: container.clientWidth,
+        height: container.clientHeight
+      });
+    };
+
+    const resizeObserver = new ResizeObserver(updateDimensions);
+    resizeObserver.observe(container);
+    updateDimensions(); // Initial measurement
+
+    return () => resizeObserver.disconnect();
+  }, []);
 
   const calculateGridSpacing = useCallback((transform: ViewTransform) => {
     // Calculate visible area dimensions in domain coordinates
@@ -132,7 +150,7 @@ export const App: React.FC = () => {
     <div className="app">
       <Toolbar
         onReset={handleReset}
-        onZoomIn={() => {}} // These are now handled in Plot component
+        onZoomIn={() => {}}
         onZoomOut={() => {}}
         onToggleGrid={handleToggleGrid}
         onClear={handleClear}
@@ -140,13 +158,19 @@ export const App: React.FC = () => {
       />
       
       <div className="main-content">
-        <Plot
-          options={DEFAULT_PLOT_OPTIONS}
-          state={plotState}
-          onPointClick={handlePointClick}
-          onZoomChange={handleZoomChange}
-          transform={transform}
-        />
+        <div className="plot-container" ref={plotContainerRef}>
+          <Plot
+            options={{
+              ...DEFAULT_PLOT_OPTIONS,
+              width: plotDimensions.width,
+              height: plotDimensions.height
+            }}
+            state={plotState}
+            onPointClick={handlePointClick}
+            onZoomChange={handleZoomChange}
+            transform={transform}
+          />
+        </div>
         
         <div className="side-panel">
           <ParameterPanel
