@@ -1,0 +1,41 @@
+.bk-root {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+.plot-title {
+    font-size: 24px !important;
+    font-weight: 600 !important;
+    color: #2c3e50;
+}
+
+.control-panel {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.sequence-output {
+    font-family: 'Fira Code', 'Consolas', monospace;
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+    margin-top: 20px;
+}
+
+.status-message {
+    font-style: italic;
+    color: #6c757d;
+    padding: 10px 0;
+}
+
+.bk-btn-danger {
+    background-color: #dc3545 !important;
+    border-color: #dc3545 !important;
+}
+
+.bk-input {
+    border-radius: 4px !important;
+    border-color: #ced4da !important;
+} 
