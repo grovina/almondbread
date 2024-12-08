@@ -86,4 +86,32 @@
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.875rem;
   color: var(--text);
+}
+
+.sequence-plot {
+  background: var(--surface);
+  border-radius: 0.375rem;
+  margin-top: 1rem;
+}
+
+.sequence-plot .axis {
+  stroke: var(--border);
+  stroke-width: 1;
+  stroke-opacity: 0.5;
+}
+
+.sequence-plot .sequence-line {
+  stroke: var(--primary);
+  stroke-width: 1.5;
+}
+
+.sequence-plot .sequence-point {
+  fill: var(--primary);
+  stroke: var(--surface);
+  stroke-width: 1;
+}
+
+.sequence-plot .sequence-point:hover {
+  fill: var(--primary-dark);
+  r: 6;
 } 

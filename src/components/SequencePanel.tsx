@@ -1,5 +1,6 @@
 import React from 'react';
 import { AnalysisResult, ComplexNumber } from '../types';
+import { SequencePlot } from './SequencePlot';
 
 interface SequencePanelProps {
   result?: AnalysisResult;
@@ -14,73 +15,51 @@ export const SequencePanel: React.FC<SequencePanelProps> = ({
     return (
       <div className="sequence-panel">
         <h3 className="panel-header">Sequence Analysis</h3>
-        <div className="empty-state">
-          Click a point on the plot to analyze its sequence
-        </div>
+        <p className="empty-state">Click a point to analyze its sequence</p>
       </div>
     );
   }
-
-  const formatComplex = (z: ComplexNumber): string => {
-    const real = z.real.toFixed(4);
-    const imag = Math.abs(z.imag).toFixed(4);
-    const sign = z.imag >= 0 ? '+' : '-';
-    return `${real} ${sign} ${imag}i`;
-  };
 
   return (
     <div className="sequence-panel">
       <h3 className="panel-header">Sequence Analysis</h3>
       
       <div className="sequence-info">
-        <div className="sequence-point">
-          c = {formatComplex(selectedPoint)}
+        <div className="info-row">
+          <span className="label">Point:</span>
+          <span className="value">
+            {selectedPoint.real.toFixed(4)} + {selectedPoint.imag.toFixed(4)}i
+          </span>
         </div>
-        <div className={`sequence-behavior ${result.behavior}`}>
-          {result.behavior.toUpperCase()}
-          {result.escapeTime && ` at iteration ${result.escapeTime}`}
+        
+        <div className="info-row">
+          <span className="label">Behavior:</span>
+          <span className={`value ${result.behavior}`}>
+            {result.behavior}
+          </span>
         </div>
+        
+        {result.escapeTime && (
+          <div className="info-row">
+            <span className="label">Escape Time:</span>
+            <span className="value">{result.escapeTime}</span>
+          </div>
+        )}
       </div>
 
-      <div className="sequence-viz">
+      <SequencePlot result={result} />
+      
+      <div className="sequence-list">
+        <h4 className="panel-subheader">Sequence Steps</h4>
         {result.sequence.map((point, i) => (
           <div key={i} className="sequence-step">
-            <span className="step-index">z_{i}</span>
-            <span className="step-value">{formatComplex(point.z)}</span>
-            {i > 0 && (
-              <span className="step-abs">
-                |z| = {complexAbs(point.z).toFixed(4)}
-              </span>
-            )}
+            <span className="step-number">z{i}</span>
+            <span className="step-value">
+              {point.z.real.toFixed(4)} + {point.z.imag.toFixed(4)}i
+            </span>
           </div>
         ))}
       </div>
-
-      <div className="sequence-details">
-        <h4 className="panel-subheader">Details</h4>
-        <div className="details-grid">
-          <div>
-            <span className="detail-label">Total Steps</span>
-            <span className="detail-value">{result.sequence.length}</span>
-          </div>
-          {result.escapeTime && (
-            <div>
-              <span className="detail-label">Escape Time</span>
-              <span className="detail-value">{result.escapeTime}</span>
-            </div>
-          )}
-          <div>
-            <span className="detail-label">Final |z|</span>
-            <span className="detail-value">
-              {complexAbs(result.sequence[result.sequence.length - 1].z).toFixed(4)}
-            </span>
-          </div>
-        </div>
-      </div>
     </div>
   );
-};
-
-function complexAbs(z: ComplexNumber): number {
-  return Math.sqrt(z.real * z.real + z.imag * z.imag);
-} 
+}; 

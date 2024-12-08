@@ -1,11 +1,21 @@
 import { AnalysisResult } from '../types';
 
+interface Chunk {
+  xStart: number;
+  xEnd: number;
+  yStart: number;
+  yEnd: number;
+  resolution: number;
+  maxIterations: number;
+}
+
 export class MandelbrotRenderer {
   private worker: Worker;
   private cache: Map<string, AnalysisResult>;
-  private chunkSize = 50;
+  private chunkSize = 25; // Smaller chunks for more frequent updates
   private onProgress?: (progress: number) => void;
   private onComplete?: () => void;
+  private abortController?: AbortController;
 
   constructor() {
     this.worker = new Worker(new URL('./mandelbrot.worker.ts', import.meta.url), { type: 'module' });
@@ -20,7 +30,7 @@ export class MandelbrotRenderer {
     };
   }
 
-  private getChunkKey(chunk: any): string {
+  private getChunkKey(chunk: Chunk): string {
     return `${chunk.xStart},${chunk.xEnd},${chunk.yStart},${chunk.yEnd},${chunk.resolution}`;
   }
 
@@ -42,7 +52,7 @@ export class MandelbrotRenderer {
     this.onProgress?.(1 - this.chunks.length / this.totalChunks);
   }
 
-  private chunks: any[] = [];
+  private chunks: Chunk[] = [];
   private totalChunks = 0;
 
   generatePoints(
@@ -53,26 +63,49 @@ export class MandelbrotRenderer {
     onProgress?: (progress: number) => void,
     onComplete?: () => void
   ): Map<string, AnalysisResult> {
+    // Cancel any ongoing computation
+    if (this.abortController) {
+      this.abortController.abort();
+    }
+    this.abortController = new AbortController();
+
     this.onProgress = onProgress;
     this.onComplete = onComplete;
 
-    // Split the area into chunks
-    const xChunks = Math.ceil(resolution / this.chunkSize);
-    const yChunks = Math.ceil(resolution / this.chunkSize);
+    // Use progressive resolution
+    const initialResolution = Math.min(resolution, 100);
+    
+    // Split the area into chunks with progressive detail
+    const xChunks = Math.ceil(initialResolution / this.chunkSize);
+    const yChunks = Math.ceil(initialResolution / this.chunkSize);
     const dx = (xRange[1] - xRange[0]) / xChunks;
     const dy = (yRange[1] - yRange[0]) / yChunks;
 
     this.chunks = [];
-    for (let i = 0; i < xChunks; i++) {
-      for (let j = 0; j < yChunks; j++) {
-        this.chunks.push({
-          xStart: xRange[0] + i * dx,
-          xEnd: xRange[0] + (i + 1) * dx,
-          yStart: yRange[0] + j * dy,
-          yEnd: yRange[0] + (j + 1) * dy,
-          resolution: this.chunkSize,
-          maxIterations
-        });
+    
+    // Generate chunks in a spiral pattern from center outward
+    const centerX = (xRange[0] + xRange[1]) / 2;
+    const centerY = (yRange[0] + yRange[1]) / 2;
+    
+    for (let ring = 0; ring < Math.max(xChunks, yChunks); ring++) {
+      for (let i = -ring; i <= ring; i++) {
+        for (let j = -ring; j <= ring; j++) {
+          if (Math.abs(i) === ring || Math.abs(j) === ring) {
+            const chunk = {
+              xStart: centerX + i * dx,
+              xEnd: centerX + (i + 1) * dx,
+              yStart: centerY + j * dy,
+              yEnd: centerY + (j + 1) * dy,
+              resolution: this.chunkSize,
+              maxIterations
+            };
+            
+            if (chunk.xStart >= xRange[0] && chunk.xEnd <= xRange[1] &&
+                chunk.yStart >= yRange[0] && chunk.yEnd <= yRange[1]) {
+              this.chunks.push(chunk);
+            }
+          }
+        }
       }
     }
 
@@ -82,6 +115,7 @@ export class MandelbrotRenderer {
   }
 
   terminate() {
+    this.abortController?.abort();
     this.worker.terminate();
   }
 } 

@@ -12,26 +12,58 @@ interface ComputeMessage {
   };
 }
 
-function computePoint(x: number, y: number, maxIterations: number): AnalysisResult {
-  let zr = 0;
-  let zi = 0;
-  let zr2 = 0;
-  let zi2 = 0;
-  let n = 0;
+// Optimized computation using period checking and fast bailout
+function computePoint(x0: number, y0: number, maxIterations: number): AnalysisResult {
+  let x = 0;
+  let y = 0;
+  let x2 = 0;
+  let y2 = 0;
+  let iteration = 0;
   
-  // Use optimized escape-time algorithm
-  while (zr2 + zi2 <= 4 && n < maxIterations) {
-    zi = 2 * zr * zi + y;
-    zr = zr2 - zi2 + x;
-    zr2 = zr * zr;
-    zi2 = zi * zi;
-    n++;
+  // Period checking
+  let period = 0;
+  let xOld = 0;
+  let yOld = 0;
+
+  // Quick bailout for main cardioid and period-2 bulb
+  const q = (x0 - 0.25) ** 2 + y0 * y0;
+  if (q * (q + (x0 - 0.25)) <= 0.25 * y0 * y0 || 
+      (x0 + 1) ** 2 + y0 * y0 <= 0.0625) {
+    return {
+      sequence: [{ z: { real: x0, imag: y0 }, iteration: 0 }],
+      behavior: 'converges'
+    };
+  }
+
+  while (iteration < maxIterations && x2 + y2 <= 4) {
+    y = 2 * x * y + y0;
+    x = x2 - y2 + x0;
+    x2 = x * x;
+    y2 = y * y;
+    
+    // Period checking - detect cycles early
+    if (x === xOld && y === yOld) {
+      iteration = maxIterations;
+      break;
+    }
+    
+    period++;
+    if (period > 20) {
+      period = 0;
+      xOld = x;
+      yOld = y;
+    }
+    
+    iteration++;
   }
 
   return {
-    sequence: [{ z: { real: x, imag: y }, iteration: 0 }],
-    behavior: n === maxIterations ? 'converges' : 'diverges',
-    escapeTime: n
+    sequence: [
+      { z: { real: x0, imag: y0 }, iteration: 0 },
+      { z: { real: x, imag: y }, iteration }
+    ],
+    behavior: iteration === maxIterations ? 'converges' : 'diverges',
+    escapeTime: iteration
   };
 }
 
@@ -43,18 +75,19 @@ self.onmessage = (e: MessageEvent<ComputeMessage>) => {
     const dx = (xEnd - xStart) / resolution;
     const dy = (yEnd - yStart) / resolution;
 
+    // Compute points with adaptive step size
     for (let i = 0; i <= resolution; i++) {
+      const x = xStart + i * dx;
+      
       for (let j = 0; j <= resolution; j++) {
-        const x = xStart + i * dx;
         const y = yStart + j * dy;
         
-        // Quick escape test
-        const q = (x - 0.25) ** 2 + y * y;
-        if (q * (q + (x - 0.25)) <= 0.25 * y * y || 
-            (x + 1) ** 2 + y * y <= 0.0625) {
+        // Skip computation for points far outside the set
+        if (x * x + y * y > 4) {
           points.push([`${x},${y}`, {
-            sequence: [{ z: { real: x, imag: y }, iteration: 0 }],
-            behavior: 'converges'
+            sequence: [{ z: { real: x, imag: y }, iteration: 1 }],
+            behavior: 'diverges',
+            escapeTime: 1
           }]);
           continue;
         }
