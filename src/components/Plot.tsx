@@ -85,7 +85,7 @@ export const Plot: React.FC<PlotProps> = ({ options, state, onPointClick, onZoom
 
       const color = result.behavior === 'converges' 
         ? 'black'
-        : `hsl(${result.escapeTime! / maxIterations * 360}, 100%, ${(1 - result.escapeTime! / maxIterations) * 50 + 25}%)`;
+        : `hsl(${result.escapeTime! / maxIterations * 360}, 100%, ${(1 - result.escapeTime! / maxIterations) * 40 + 30}%)`;
 
       ctx.fillStyle = color;
       ctx.fillRect(screenX - pointSize / 2, screenY - pointSize / 2, pointSize, pointSize);
@@ -93,7 +93,7 @@ export const Plot: React.FC<PlotProps> = ({ options, state, onPointClick, onZoom
 
     // Highlight selected point
     if (state.selectedPoint) {
-      ctx.strokeStyle = 'red';
+      ctx.strokeStyle = '#ff3333';
       ctx.lineWidth = 2;
       const screenX = newXScale(state.selectedPoint.x);
       const screenY = newYScale(state.selectedPoint.y);
