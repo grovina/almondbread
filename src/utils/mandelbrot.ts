@@ -117,4 +117,23 @@ export class MandelbrotRenderer {
   public getCache(): Map<string, AnalysisResult> {
     return this.cache;
   }
+
+  computeMandelbrot(
+    xRange: [number, number],
+    yRange: [number, number],
+    resolution: number,
+    maxIterations: number,
+    callback: (points: [string, AnalysisResult][], progress: number) => void
+  ) {
+    return this.generatePoints(
+      xRange,
+      yRange,
+      resolution,
+      maxIterations,
+      (progress) => {
+        callback(Array.from(this.getCache()), progress);
+      },
+      () => callback(Array.from(this.getCache()), 1)
+    );
+  }
 } 

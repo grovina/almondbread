@@ -97,7 +97,7 @@ export const App: React.FC = () => {
   }, []);
 
   const handlePointClick = useCallback((point: Point) => {
-    console.log('Point clicked:', point);
+    console.log('Click:', point);
     const c: ComplexNumber = { real: point.x, imag: point.y };
     
     if (plotState.gridEnabled) {
@@ -114,9 +114,8 @@ export const App: React.FC = () => {
         points: new Map([...prev.points, ...gridResults]),
       }));
     } else {
-      console.log('Computing sequence...');
       const result = computeSequence(parameters.z0, c, parameters.maxIterations);
-      console.log('Sequence result:', result);
+      console.log('Sequence:', result);
       const key = `${point.x},${point.y}`;
       setPlotState(prev => ({
         ...prev,
@@ -131,7 +130,6 @@ export const App: React.FC = () => {
     if (canvas && zoomBehaviorRef.current) {
       select(canvas as HTMLCanvasElement)
         .call(zoomBehaviorRef.current.transform, zoomIdentity);
-      setTransform({ k: 1, x: 0, y: 0 });
     }
   }, []);
 
@@ -162,52 +160,57 @@ export const App: React.FC = () => {
     yRange: [number, number] = [-1.25, 1.25],
     currentTransform?: ViewTransform
   ) => {
-    setPlotState(prev => ({ 
-      ...prev, 
-      selectedPoint: undefined,
-      gridEnabled: false
-    }));
-    
-    // Calculate resolution based on viewport and zoom level
-    const viewportWidth = plotDimensions.width / (currentTransform?.k || 1);
-    const viewportHeight = plotDimensions.height / (currentTransform?.k || 1);
-    const baseResolution = Math.min(
-      Math.ceil(Math.max(viewportWidth, viewportHeight) / 2),
-      200
-    );
-    
-    rendererRef.current?.generatePoints(
+    console.log('Requesting new resolution:', {
       xRange,
       yRange,
-      baseResolution,
+      transform: currentTransform,
+      dimensions: plotDimensions
+    });
+
+    // Calculate appropriate resolution based on zoom level
+    const resolution = currentTransform 
+      ? Math.ceil(Math.min(plotDimensions.width, plotDimensions.height) * currentTransform.k / 100) 
+      : Math.min(plotDimensions.width, plotDimensions.height) / 100;
+
+    // Update state with loading indicator
+    setRenderProgress(0);
+    
+    // Request new points at higher resolution
+    rendererRef.current?.computeMandelbrot(
+      xRange,
+      yRange,
+      resolution,
       parameters.maxIterations,
-      (progress: number) => {
+      (points, progress) => {
+        setPlotState(prev => ({ ...prev, points: new Map(points) }));
         setRenderProgress(progress);
-        setPlotState(prev => ({
-          ...prev,
-          points: new Map(rendererRef.current?.getCache()),
-        }));
-      },
-      () => setRenderProgress(1),
-      currentTransform
+      }
     );
-  }, [parameters.maxIterations, plotDimensions, transform]);
+  }, [parameters.maxIterations, plotDimensions]);
 
   const handleZoomIn = useCallback(() => {
     const canvas = plotContainerRef.current?.querySelector('canvas');
     if (canvas && zoomBehaviorRef.current) {
+      const newTransform = zoomIdentity
+        .translate(transform.x, transform.y)
+        .scale(transform.k * 1.5);
+        
       select(canvas as HTMLCanvasElement)
-        .call(zoomBehaviorRef.current.scaleBy, 1.5);
+        .call(zoomBehaviorRef.current.transform, newTransform);
     }
-  }, []);
+  }, [transform]);
 
   const handleZoomOut = useCallback(() => {
     const canvas = plotContainerRef.current?.querySelector('canvas');
     if (canvas && zoomBehaviorRef.current) {
+      const newTransform = zoomIdentity
+        .translate(transform.x, transform.y)
+        .scale(transform.k * 0.75);
+        
       select(canvas as HTMLCanvasElement)
-        .call(zoomBehaviorRef.current.scaleBy, 0.75);
+        .call(zoomBehaviorRef.current.transform, newTransform);
     }
-  }, []);
+  }, [transform]);
 
   const selectedResult = plotState.selectedPoint 
     ? plotState.points.get(`${plotState.selectedPoint.x},${plotState.selectedPoint.y}`)
