@@ -58,10 +58,11 @@ export class MandelbrotRenderer {
   generatePoints(
     xRange: [number, number],
     yRange: [number, number],
-    resolution: number,
+    baseResolution: number,
     maxIterations: number,
     onProgress?: (progress: number) => void,
-    onComplete?: () => void
+    onComplete?: () => void,
+    transform?: { k: number }
   ): Map<string, AnalysisResult> {
     // Cancel any ongoing computation
     if (this.abortController) {
@@ -72,9 +73,16 @@ export class MandelbrotRenderer {
     this.onProgress = onProgress;
     this.onComplete = onComplete;
 
+    // Calculate adaptive resolution based on zoom level
+    const zoomFactor = transform?.k || 1;
+    const adaptiveResolution = Math.min(
+      Math.ceil(baseResolution * Math.sqrt(zoomFactor)),
+      1000 // Cap maximum resolution to prevent performance issues
+    );
+
     // Ensure we have enough chunks to cover the entire area
-    const xChunks = Math.ceil(resolution / this.chunkSize);
-    const yChunks = Math.ceil(resolution / this.chunkSize);
+    const xChunks = Math.ceil(adaptiveResolution / this.chunkSize);
+    const yChunks = Math.ceil(adaptiveResolution / this.chunkSize);
 
     this.chunks = [];
     

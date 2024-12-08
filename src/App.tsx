@@ -1,3 +1,5 @@
+import { select } from 'd3-selection';
+import { ZoomBehavior, zoomIdentity } from 'd3-zoom';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ParameterPanel } from './components/ParameterPanel';
 import { Plot } from './components/Plot';
@@ -36,6 +38,7 @@ export const App: React.FC = () => {
   const plotContainerRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<MandelbrotRenderer>();
   const [renderProgress, setRenderProgress] = useState(0);
+  const zoomBehaviorRef = useRef<ZoomBehavior<HTMLCanvasElement, unknown> | null>(null);
 
   useEffect(() => {
     const container = plotContainerRef.current;
@@ -124,7 +127,12 @@ export const App: React.FC = () => {
   }, [parameters, plotState.gridEnabled, transform, calculateGridSpacing]);
 
   const handleReset = useCallback(() => {
-    setPlotState(prev => ({ ...prev, selectedPoint: undefined }));
+    const canvas = plotContainerRef.current?.querySelector('canvas');
+    if (canvas && zoomBehaviorRef.current) {
+      select(canvas as HTMLCanvasElement)
+        .call(zoomBehaviorRef.current.transform, zoomIdentity);
+      setTransform({ k: 1, x: 0, y: 0 });
+    }
   }, []);
 
   const handleClear = useCallback(() => {
@@ -149,20 +157,21 @@ export const App: React.FC = () => {
     });
   }, [transform, calculateGridSpacing]);
 
-  const handleShowMandelbrot = useCallback(() => {
+  const handleShowMandelbrot = useCallback((
+    xRange: [number, number] = [-2.5, 1],
+    yRange: [number, number] = [-1.25, 1.25],
+    currentTransform?: ViewTransform
+  ) => {
     setPlotState(prev => ({ 
       ...prev, 
       selectedPoint: undefined,
       gridEnabled: false
     }));
-
-    const xRange: [number, number] = [-2.5, 1];
-    const yRange: [number, number] = [-1.25, 1.25];
     
-    // Calculate resolution based on viewport
-    const viewportWidth = plotDimensions.width / transform.k;
-    const viewportHeight = plotDimensions.height / transform.k;
-    const resolution = Math.min(
+    // Calculate resolution based on viewport and zoom level
+    const viewportWidth = plotDimensions.width / (currentTransform?.k || 1);
+    const viewportHeight = plotDimensions.height / (currentTransform?.k || 1);
+    const baseResolution = Math.min(
       Math.ceil(Math.max(viewportWidth, viewportHeight) / 2),
       200
     );
@@ -170,7 +179,7 @@ export const App: React.FC = () => {
     rendererRef.current?.generatePoints(
       xRange,
       yRange,
-      resolution,
+      baseResolution,
       parameters.maxIterations,
       (progress: number) => {
         setRenderProgress(progress);
@@ -179,9 +188,26 @@ export const App: React.FC = () => {
           points: new Map(rendererRef.current?.getCache()),
         }));
       },
-      () => setRenderProgress(1)
+      () => setRenderProgress(1),
+      currentTransform
     );
   }, [parameters.maxIterations, plotDimensions, transform]);
+
+  const handleZoomIn = useCallback(() => {
+    const canvas = plotContainerRef.current?.querySelector('canvas');
+    if (canvas && zoomBehaviorRef.current) {
+      select(canvas as HTMLCanvasElement)
+        .call(zoomBehaviorRef.current.scaleBy, 1.5);
+    }
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    const canvas = plotContainerRef.current?.querySelector('canvas');
+    if (canvas && zoomBehaviorRef.current) {
+      select(canvas as HTMLCanvasElement)
+        .call(zoomBehaviorRef.current.scaleBy, 0.75);
+    }
+  }, []);
 
   const selectedResult = plotState.selectedPoint 
     ? plotState.points.get(`${plotState.selectedPoint.x},${plotState.selectedPoint.y}`)
@@ -191,11 +217,11 @@ export const App: React.FC = () => {
     <div className="app">
       <Toolbar
         onReset={handleReset}
-        onZoomIn={() => {}}
-        onZoomOut={() => {}}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
         onToggleGrid={handleToggleGrid}
         onClear={handleClear}
-        onShowMandelbrot={handleShowMandelbrot}
+        onShowMandelbrot={() => handleShowMandelbrot()}
         isGridEnabled={plotState.gridEnabled}
       />
       

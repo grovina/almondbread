@@ -21,6 +21,22 @@ interface ViewTransform {
   y: number;
 }
 
+function getVisibleRange(transform: ViewTransform, options: PlotOptions): { 
+  xRange: [number, number], 
+  yRange: [number, number] 
+} {
+  return {
+    xRange: [
+      options.xRange[0] + (-transform.x / transform.k) * (options.xRange[1] - options.xRange[0]) / options.width,
+      options.xRange[1] + (-transform.x / transform.k) * (options.xRange[1] - options.xRange[0]) / options.width
+    ],
+    yRange: [
+      options.yRange[0] + (-transform.y / transform.k) * (options.yRange[1] - options.yRange[0]) / options.height,
+      options.yRange[1] + (-transform.y / transform.k) * (options.yRange[1] - options.yRange[0]) / options.height
+    ]
+  };
+}
+
 export const Plot: React.FC<PlotProps> = ({ options, state, onPointClick, onZoomChange, transform, maxIterations, width, height }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const offscreenRef = useRef<HTMLCanvasElement | null>(null);
@@ -50,31 +66,52 @@ export const Plot: React.FC<PlotProps> = ({ options, state, onPointClick, onZoom
     const ctx = canvas.getContext('2d')!;
     ctx.clearRect(0, 0, width, height);
 
-    // Batch points by color for better performance
-    const batches = new Map<string, Point[]>();
-    
+    // Get visible range in domain coordinates
+    const { xRange, yRange } = getVisibleRange(transform, options);
+
+    // Debug: log initial points
+    console.log('Initial points:', points.size);
+
+    // Group points by color first
+    const colorGroups = new Map<string, Point[]>();
     points.forEach((result, key) => {
       const [x, y] = key.split(',').map(parseFloat);
+      
+      // Check if point is within visible range
+      if (x < xRange[0] || x > xRange[1] || y < yRange[0] || y > yRange[1]) {
+        return;
+      }
+
       const color = result.behavior === 'converges' 
         ? 'black'
         : `hsl(${result.escapeTime! / maxIterations * 360}, 100%, ${(1 - result.escapeTime! / maxIterations) * 50 + 25}%)`;
-      
-      if (!batches.has(color)) batches.set(color, []);
-      batches.get(color)!.push({ x, y });
+
+      if (!colorGroups.has(color)) {
+        colorGroups.set(color, []);
+      }
+      colorGroups.get(color)!.push({ x, y });
     });
 
-    // Draw points by color batches
-    batches.forEach((points, color) => {
+    // Debug: log points after color grouping
+    console.log('Points after color grouping:', 
+      Array.from(colorGroups.entries()).map(([color, points]) => 
+        `${color}: ${points.length}`
+      )
+    );
+
+    // Draw points by color
+    colorGroups.forEach((points, color) => {
       ctx.fillStyle = color;
       ctx.beginPath();
       points.forEach(p => {
         const screenX = xScale(p.x);
         const screenY = yScale(p.y);
-        ctx.rect(screenX, screenY, 1, 1);
+        const size = 2.5;
+        ctx.rect(screenX - size/2, screenY - size/2, size, size);
       });
       ctx.fill();
     });
-  }, [width, height, xScale, yScale, maxIterations]);
+  }, [width, height, xScale, yScale, maxIterations, transform, options]);
 
   // Update visible canvas and render points
   useEffect(() => {
@@ -102,7 +139,7 @@ export const Plot: React.FC<PlotProps> = ({ options, state, onPointClick, onZoom
     ctx.drawImage(offscreen, 0, 0);
     
     ctx.restore();
-  }, [state.points, transform, width, height, renderToCanvas]);
+  }, [state.points, transform, width, height, renderToCanvas, options.xRange, options.yRange]);
 
   // Setup zoom behavior
   useEffect(() => {
@@ -122,62 +159,25 @@ export const Plot: React.FC<PlotProps> = ({ options, state, onPointClick, onZoom
     };
   }, [onZoomChange]);
 
-  const handleZoomIn = useCallback(() => {
-    if (!canvasRef.current || !zoomBehaviorRef.current) return;
-    select(canvasRef.current)
-      .transition()
-      .duration(300)
-      .call(zoomBehaviorRef.current.scaleBy, 1.5);
-  }, []);
-
-  const handleZoomOut = useCallback(() => {
-    if (!canvasRef.current || !zoomBehaviorRef.current) return;
-    select(canvasRef.current)
-      .transition()
-      .duration(300)
-      .call(zoomBehaviorRef.current.scaleBy, 0.75);
-  }, []);
-
-  const handleReset = useCallback(() => {
-    if (!canvasRef.current || !zoomBehaviorRef.current) return;
-    select(canvasRef.current)
-      .transition()
-      .duration(300)
-      .call(zoomBehaviorRef.current.transform, zoom().transform);
-  }, []);
-
   const handleCanvasClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current) return;
 
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
     
-    // Get coordinates relative to canvas
-    const x = (event.clientX - rect.left - transform.x) / transform.k;
-    const y = (event.clientY - rect.top - transform.y) / transform.k;
+    // Get coordinates in screen space
+    const screenX = event.clientX - rect.left;
+    const screenY = event.clientY - rect.top;
 
     // Convert to domain coordinates
-    const xScale = scaleLinear()
-      .domain([options.xRange[0], options.xRange[1]])
-      .range([0, options.width]);
-
-    const yScale = scaleLinear()
-      .domain([options.yRange[0], options.yRange[1]])
-      .range([options.height, 0]);
-
-    const domainX = xScale.invert(x);
-    const domainY = yScale.invert(y);
+    const domainX = xScale.invert((screenX - transform.x) / transform.k);
+    const domainY = yScale.invert((screenY - transform.y) / transform.k);
 
     onPointClick({ x: domainX, y: domainY });
-  }, [options, onPointClick, transform]);
+  }, [xScale, yScale, transform, onPointClick]);
 
   return (
     <div className="plot">
-      <div className="plot-controls">
-        <button onClick={handleZoomIn} className="plot-control" title="Zoom In">+</button>
-        <button onClick={handleZoomOut} className="plot-control" title="Zoom Out">−</button>
-        <button onClick={handleReset} className="plot-control" title="Reset View">↺</button>
-      </div>
       <canvas
         ref={canvasRef}
         width={width}
@@ -185,7 +185,6 @@ export const Plot: React.FC<PlotProps> = ({ options, state, onPointClick, onZoom
         className="plot-canvas"
         onClick={handleCanvasClick}
       />
-      {/* Overlay SVG for interactive elements */}
       <svg className="plot-overlay">
         {state.selectedPoint && (
           <circle
