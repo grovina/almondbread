@@ -59,7 +59,7 @@
 .point {
   transition: all 0.2s;
   cursor: pointer;
-  opacity: 0.6;
+  opacity: 0.8;
 }
 
 .point.converges {
@@ -83,7 +83,7 @@
 .point.selected {
   opacity: 1;
   stroke: var(--primary);
-  stroke-width: 1.5;
+  stroke-width: 1;
   filter: drop-shadow(0 0 3px var(--primary));
 }
 

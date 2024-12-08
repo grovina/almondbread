@@ -72,26 +72,24 @@ export class MandelbrotRenderer {
     this.onProgress = onProgress;
     this.onComplete = onComplete;
 
-    // Use progressive resolution
-    const initialResolution = Math.min(resolution, 100);
-    
-    // Split the area into chunks with progressive detail
-    const xChunks = Math.ceil(initialResolution / this.chunkSize);
-    const yChunks = Math.ceil(initialResolution / this.chunkSize);
+    // Ensure we have enough chunks to cover the entire area
+    const xChunks = Math.ceil(resolution / this.chunkSize);
+    const yChunks = Math.ceil(resolution / this.chunkSize);
 
     this.chunks = [];
     
-    // Calculate chunks in a grid pattern instead of spiral
+    // Add a small overlap between chunks to prevent gaps
+    const overlap = 0.001;
     const xStep = (xRange[1] - xRange[0]) / xChunks;
     const yStep = (yRange[1] - yRange[0]) / yChunks;
 
     for (let i = 0; i < xChunks; i++) {
       for (let j = 0; j < yChunks; j++) {
         this.chunks.push({
-          xStart: xRange[0] + i * xStep,
-          xEnd: xRange[0] + (i + 1) * xStep,
-          yStart: yRange[0] + j * yStep,
-          yEnd: yRange[0] + (j + 1) * yStep,
+          xStart: xRange[0] + i * xStep - (i > 0 ? overlap : 0),
+          xEnd: xRange[0] + (i + 1) * xStep + (i < xChunks - 1 ? overlap : 0),
+          yStart: yRange[0] + j * yStep - (j > 0 ? overlap : 0),
+          yEnd: yRange[0] + (j + 1) * yStep + (j < yChunks - 1 ? overlap : 0),
           resolution: this.chunkSize,
           maxIterations
         });

@@ -177,7 +177,12 @@ export const Plot: React.FC<PlotProps> = ({ options, state, onPointClick, onZoom
     pointsEnter.merge(pointsSelection)
       .attr('cx', ([key]) => xScale(parseFloat(key.split(',')[0])))
       .attr('cy', ([key]) => yScale(parseFloat(key.split(',')[1])))
-      .attr('r', 2.5)
+      .attr('r', ([, result], i, nodes) => {
+        const element = nodes[i];
+        if (element.classList.contains('selected')) return 3 / transform.k;
+        if (element.matches(':hover')) return 3 / transform.k;
+        return 1 / transform.k;
+      })
       .attr('class', ([, result]) => `point ${result.behavior}`)
       .style('--escape-ratio', ([, result]) => 
         result.escapeTime ? Math.min(result.escapeTime / maxIterations, 1) : 1

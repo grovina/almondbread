@@ -151,12 +151,11 @@ export const App: React.FC = () => {
   }, [transform, calculateGridSpacing]);
 
   const handleShowMandelbrot = useCallback(() => {
-    // Use fixed coordinates for the classic Mandelbrot view
     const xRange: [number, number] = [-2.5, 1];
     const yRange: [number, number] = [-1.25, 1.25];
     
-    // Use much higher resolution since we're now progressive
-    const resolution = 500;
+    // Lower resolution for better performance
+    const resolution = 200;
     
     rendererRef.current?.generatePoints(
       xRange,
