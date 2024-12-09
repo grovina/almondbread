@@ -265,11 +265,6 @@ export const App: React.FC = () => {
 
   return (
     <div className="app">
-      {renderProgress > 0 && renderProgress < 1 && (
-        <div className="progress-overlay">
-          <div className="progress-bar" style={{ width: `${renderProgress * 100}%` }} />
-        </div>
-      )}
       <Toolbar
         onReset={handleReset}
         onZoomIn={handleZoomIn}
@@ -283,6 +278,12 @@ export const App: React.FC = () => {
       />
       
       <div className="main-content">
+        {renderProgress > 0 && renderProgress < 1 && (
+          <div className="progress-overlay">
+            <div className="progress-bar" style={{ width: `${renderProgress * 100}%` }} />
+          </div>
+        )}
+        
         <div className="plot-container" ref={plotContainerRef}>
           <Plot
             options={{
