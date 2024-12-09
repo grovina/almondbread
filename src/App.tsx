@@ -232,12 +232,32 @@ export const App: React.FC = () => {
   }, [parameters.maxIterations, plotDimensions, transform, renderProgress]);
 
   const handleZoomIn = useCallback(() => {
-    setTransform(transform.scale(1.5));
-  }, [transform]);
+    const scale = 1.5;
+    const centerX = plotDimensions.width / 2;
+    const centerY = plotDimensions.height / 2;
+    
+    // Calculate new transform that keeps the center point fixed
+    const newTransform = transform
+      .translate(centerX, centerY)  // Move to center
+      .scale(scale)                 // Scale
+      .translate(-centerX, -centerY); // Move back
+    
+    setTransform(newTransform);
+  }, [transform, plotDimensions]);
 
   const handleZoomOut = useCallback(() => {
-    setTransform(transform.scale(0.75));
-  }, [transform]);
+    const scale = 0.75;
+    const centerX = plotDimensions.width / 2;
+    const centerY = plotDimensions.height / 2;
+    
+    // Calculate new transform that keeps the center point fixed
+    const newTransform = transform
+      .translate(centerX, centerY)  // Move to center
+      .scale(scale)                 // Scale
+      .translate(-centerX, -centerY); // Move back
+    
+    setTransform(newTransform);
+  }, [transform, plotDimensions]);
 
   const selectedResult = plotState.selectedPoint 
     ? plotState.points.get(`${plotState.selectedPoint.x},${plotState.selectedPoint.y}`)
