@@ -10,8 +10,8 @@ import { computeGrid, computeSequence } from './utils/compute';
 import { MandelbrotRenderer } from './utils/mandelbrot';
 
 export const PLOT_DIMENSIONS = {
-  width: 600,
-  height: 400
+  width: 400,
+  height: 280
 };
 
 const DEFAULT_PARAMETERS: Parameters = {
