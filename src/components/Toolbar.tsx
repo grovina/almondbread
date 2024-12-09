@@ -2,6 +2,7 @@ import {
   BiAtom,
   BiGridAlt,
   BiReset,
+  BiStop,
   BiTargetLock,
   BiZoomIn,
   BiZoomOut
@@ -72,9 +73,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           </IconButton>
         </div>
         <IconButton
-          icon={<BiAtom />}
+          icon={isComputing ? <BiStop /> : <BiAtom />}
           onClick={onShowMandelbrot}
-          tooltip={isComputing ? "Cancel Computation" : "Show Mandelbrot Set"}
+          tooltip={isComputing ? "Stop Computation" : "Show Mandelbrot Set"}
           active={isComputing}
         />
       </div>
