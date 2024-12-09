@@ -22,7 +22,7 @@ export class MandelbrotRenderer {
   private cache: Map<string, AnalysisResult>;
   private onProgress?: (progress: number) => void;
   private onComplete?: () => void;
-  private abortController?: AbortController;
+  private isComputing: boolean = false;
 
   constructor() {
     this.worker = new Worker(new URL('./mandelbrot.worker.ts', import.meta.url), { type: 'module' });
@@ -87,10 +87,11 @@ export class MandelbrotRenderer {
     onProgress?: (progress: number) => void,
     onComplete?: () => void
   ): Map<string, AnalysisResult> {
-    if (this.abortController) {
-      this.abortController.abort();
+    if (this.isComputing) {
+      this.abort();
     }
-    this.abortController = new AbortController();
+    
+    this.isComputing = true;
 
     this.onProgress = onProgress;
     this.onComplete = onComplete;
@@ -130,8 +131,7 @@ export class MandelbrotRenderer {
   }
 
   terminate() {
-    this.abortController?.abort();
-    this.worker.terminate();
+    this.abort();
   }
 
   public getCache(): Map<string, AnalysisResult> {
@@ -145,6 +145,11 @@ export class MandelbrotRenderer {
     maxIterations: number,
     callback: (points: [string, AnalysisResult][], progress: number) => void
   ) {
+    if (this.isComputing) {
+      this.abort();
+    }
+    
+    this.isComputing = true;
     // Calculate chunk sizes based on fixed resolution
     const chunkSize = {
       x: Math.ceil(resolution.x / 10), // Split into 10x10 chunks
@@ -162,5 +167,13 @@ export class MandelbrotRenderer {
       },
       () => callback(Array.from(this.getCache()), 1)
     );
+  }
+
+  abort() {
+    if (this.isComputing) {
+      this.worker.terminate();
+      this.worker = new Worker(new URL('./mandelbrot.worker.ts', import.meta.url), { type: 'module' });
+      this.isComputing = false;
+    }
   }
 } 

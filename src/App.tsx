@@ -174,6 +174,13 @@ export const App: React.FC = () => {
   }, [transform, calculateGridSpacing]);
 
   const handleShowMandelbrot = useCallback(() => {
+    if (renderProgress > 0 && renderProgress < 1) {
+      // If computation is in progress, abort it
+      rendererRef.current?.abort();
+      setRenderProgress(0);
+      return;
+    }
+
     // Define initial scales
     const xScale = scaleLinear()
       .domain(DEFAULT_PLOT_OPTIONS.xRange)
@@ -222,7 +229,7 @@ export const App: React.FC = () => {
         setRenderProgress(progress);
       }
     );
-  }, [parameters.maxIterations, plotDimensions, transform]);
+  }, [parameters.maxIterations, plotDimensions, transform, renderProgress]);
 
   const handleZoomIn = useCallback(() => {
     setTransform(transform.scale(1.5));
@@ -252,6 +259,7 @@ export const App: React.FC = () => {
         onShowMandelbrot={handleShowMandelbrot}
         isGridEnabled={plotState.gridEnabled}
         zoomLevel={transform.k}
+        isComputing={renderProgress > 0 && renderProgress < 1}
       />
       
       <div className="main-content">

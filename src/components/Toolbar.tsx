@@ -1,3 +1,4 @@
+import { FunctionSquare, Loader } from 'lucide-react';
 import React from 'react';
 
 interface ToolbarProps {
@@ -9,6 +10,7 @@ interface ToolbarProps {
   onShowMandelbrot: () => void;
   isGridEnabled: boolean;
   zoomLevel: number;
+  isComputing?: boolean;
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({
@@ -19,7 +21,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onClear,
   onShowMandelbrot,
   isGridEnabled,
-  zoomLevel
+  zoomLevel,
+  isComputing = false,
 }) => {
   return (
     <div className="toolbar">
@@ -77,15 +80,16 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
       <div className="tool-separator" />
 
-      <button 
+      <button
         className="tool-button mandelbrot"
         onClick={onShowMandelbrot}
-        title="Show Mandelbrot Set"
+        title={isComputing ? "Cancel computation" : "Show Mandelbrot set"}
       >
-        <svg viewBox="0 0 24 24" width="16" height="16">
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
-          <path d="M12 6c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6z"/>
-        </svg>
+        {isComputing ? (
+          <Loader className="animate-spin" />
+        ) : (
+          <FunctionSquare />
+        )}
       </button>
 
       <div className="zoom-level">
