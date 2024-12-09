@@ -123,6 +123,8 @@ export class MandelbrotRenderer {
     }
 
     this.totalChunks = this.chunks.length;
+    // Shuffle chunks array
+    this.chunks.sort(() => Math.random() - 0.5);
     this.processNextChunk();
     return this.cache;
   }

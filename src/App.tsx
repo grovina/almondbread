@@ -9,6 +9,11 @@ import { ComplexNumber, Parameters, PlotState, Point } from './types';
 import { computeGrid, computeSequence } from './utils/compute';
 import { MandelbrotRenderer } from './utils/mandelbrot';
 
+export const PLOT_DIMENSIONS = {
+  width: 600,
+  height: 400
+};
+
 const DEFAULT_PARAMETERS: Parameters = {
   z0: { real: 0, imag: 0 },
   maxIterations: 100,
@@ -34,7 +39,10 @@ export const App: React.FC = () => {
     gridEnabled: false
   });
   const [transform, setTransform] = useState<ZoomTransform>(zoomIdentity);
-  const [plotDimensions, setPlotDimensions] = useState({ width: 800, height: 600 });
+  const [plotDimensions, setPlotDimensions] = useState({ 
+    width: PLOT_DIMENSIONS.width, 
+    height: PLOT_DIMENSIONS.height 
+  });
   const plotContainerRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<MandelbrotRenderer>();
   const [renderProgress, setRenderProgress] = useState(0);
@@ -44,9 +52,23 @@ export const App: React.FC = () => {
     if (!container) return;
 
     const updateDimensions = () => {
+      const containerAspectRatio = container.clientWidth / container.clientHeight;
+      const plotAspectRatio = PLOT_DIMENSIONS.width / PLOT_DIMENSIONS.height;
+      
+      let width, height;
+      if (containerAspectRatio > plotAspectRatio) {
+        // Container is wider - fit to height
+        height = container.clientHeight;
+        width = height * plotAspectRatio;
+      } else {
+        // Container is taller - fit to width
+        width = container.clientWidth;
+        height = width / plotAspectRatio;
+      }
+      
       setPlotDimensions({
-        width: container.clientWidth,
-        height: container.clientHeight
+        width: Math.round(width),
+        height: Math.round(height)
       });
     };
 
@@ -111,6 +133,7 @@ export const App: React.FC = () => {
       setPlotState(prev => ({
         ...prev,
         points: new Map([...prev.points, ...gridResults]),
+        selectedPoint: undefined
       }));
     } else {
       const result = computeSequence(parameters.z0, c, parameters.maxIterations);
@@ -170,18 +193,20 @@ export const App: React.FC = () => {
 
     console.log('Requesting Mandelbrot set for:', visibleXRange, visibleYRange);
 
-    // Fixed resolution for the entire view
-    const FIXED_RESOLUTION = 1000;
-    const aspectRatio = plotDimensions.width / plotDimensions.height;
+    // Use fixed resolution from PLOT_DIMENSIONS
     const resolution = {
-      x: FIXED_RESOLUTION,
-      y: Math.ceil(FIXED_RESOLUTION / aspectRatio)
+      x: PLOT_DIMENSIONS.width,
+      y: PLOT_DIMENSIONS.height
     };
 
     setRenderProgress(0);
 
-    // Clear existing points before starting new computation
-    setPlotState(prev => ({ ...prev, points: new Map() }));
+    // Clear existing points and selected point before starting new computation
+    setPlotState(prev => ({ 
+      ...prev, 
+      points: new Map(),
+      selectedPoint: undefined  // Clear selected point
+    }));
 
     rendererRef.current?.computeMandelbrot(
       visibleXRange,
@@ -189,7 +214,11 @@ export const App: React.FC = () => {
       resolution,
       parameters.maxIterations,
       (points, progress) => {
-        setPlotState(prev => ({ ...prev, points: new Map(points) }));
+        setPlotState(prev => ({ 
+          ...prev, 
+          points: new Map(points),
+          selectedPoint: undefined  // Ensure selected point stays cleared
+        }));
         setRenderProgress(progress);
       }
     );
@@ -209,6 +238,11 @@ export const App: React.FC = () => {
 
   return (
     <div className="app">
+      {renderProgress > 0 && renderProgress < 1 && (
+        <div className="progress-overlay">
+          <div className="progress-bar" style={{ width: `${renderProgress * 100}%` }} />
+        </div>
+      )}
       <Toolbar
         onReset={handleReset}
         onZoomIn={handleZoomIn}
@@ -221,11 +255,6 @@ export const App: React.FC = () => {
       />
       
       <div className="main-content">
-        {renderProgress > 0 && renderProgress < 1 && (
-          <div className="progress-overlay">
-            <div className="progress-bar" style={{ width: `${renderProgress * 100}%` }} />
-          </div>
-        )}
         <div className="plot-container" ref={plotContainerRef}>
           <Plot
             options={{

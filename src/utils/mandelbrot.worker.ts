@@ -32,8 +32,8 @@ function computePoint(x0: number, y0: number, maxIterations: number): AnalysisRe
   
   // Period checking
   let period = 0;
-  let xOld = 0;
-  let yOld = 0;
+  let xOld = new Decimal(0);
+  let yOld = new Decimal(0);
 
   // Quick bailout for main cardioid and period-2 bulb
   const q = (x0 - 0.25) ** 2 + y0 * y0;
@@ -52,7 +52,7 @@ function computePoint(x0: number, y0: number, maxIterations: number): AnalysisRe
     y2 = y.times(y);
     
     // Period checking - detect cycles early
-    if (x === xOld && y === yOld) {
+    if (x.equals(xOld) && y.equals(yOld)) {
       iteration = maxIterations;
       break;
     }

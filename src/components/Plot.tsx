@@ -2,6 +2,7 @@ import { scaleLinear } from 'd3-scale';
 import { select } from 'd3-selection';
 import { zoom, ZoomTransform } from 'd3-zoom';
 import { useCallback, useEffect, useRef } from 'react';
+import { PLOT_DIMENSIONS } from '../App';
 import { PlotOptions, PlotState, Point } from '../types';
 
 interface PlotProps {
@@ -70,6 +71,11 @@ export const Plot: React.FC<PlotProps> = ({ options, state, onPointClick, onZoom
     canvasRef.current.height = scaledHeight;
     ctx.scale(dpr, dpr);
 
+    // Scale the point size based on the ratio between actual size and computation resolution
+    const scaleX = width / PLOT_DIMENSIONS.width;
+    const scaleY = height / PLOT_DIMENSIONS.height;
+    const pointSize = Math.max(scaleX, scaleY) * 2; // Base point size scaled by display ratio
+
     // Apply the zoom transform to scales
     const newXScale = transform.rescaleX(xScale);
     const newYScale = transform.rescaleY(yScale);
@@ -78,7 +84,6 @@ export const Plot: React.FC<PlotProps> = ({ options, state, onPointClick, onZoom
     ctx.clearRect(0, 0, width, height);
 
     // Draw points
-    const pointSize = 2;
     state.points.forEach((result, key) => {
       const [x, y] = key.split(',').map(parseFloat);
       const screenX = newXScale(x);
@@ -89,7 +94,12 @@ export const Plot: React.FC<PlotProps> = ({ options, state, onPointClick, onZoom
         : `hsl(${result.escapeTime! / maxIterations * 360}, 100%, ${(1 - result.escapeTime! / maxIterations) * 40 + 30}%)`;
 
       ctx.fillStyle = color;
-      ctx.fillRect(screenX - pointSize / 2, screenY - pointSize / 2, pointSize, pointSize);
+      ctx.fillRect(
+        screenX - pointSize / 2, 
+        screenY - pointSize / 2, 
+        pointSize, 
+        pointSize
+      );
     });
 
     // Highlight selected point
@@ -109,17 +119,28 @@ export const Plot: React.FC<PlotProps> = ({ options, state, onPointClick, onZoom
     if (!canvasRef.current) return;
 
     const rect = canvasRef.current.getBoundingClientRect();
+    
+    // Get click position relative to canvas element
+    // No DPR scaling needed because getBoundingClientRect returns scaled dimensions
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
+
+    // Convert to relative coordinates (0-1)
+    const relativeX = x / rect.width;
+    const relativeY = y / rect.height;
+
+    // Map to canvas coordinates
+    const canvasX = relativeX * width;
+    const canvasY = relativeY * height;
 
     // Invert the transform to get domain coordinates
     const newXScale = transform.rescaleX(xScale);
     const newYScale = transform.rescaleY(yScale);
-    const domainX = newXScale.invert(x);
-    const domainY = newYScale.invert(y);
+    const domainX = newXScale.invert(canvasX);
+    const domainY = newYScale.invert(canvasY);
 
     onPointClick({ x: domainX, y: domainY });
-  }, [xScale, yScale, transform, onPointClick]);
+  }, [xScale, yScale, transform, onPointClick, width, height]);
 
   return (
     <div className="plot" style={{ width, height, position: 'relative' }}>
