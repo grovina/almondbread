@@ -227,6 +227,7 @@ export const App: React.FC = () => {
             state={plotState}
             onPointClick={handlePointClick}
             onZoomChange={handleZoomChange}
+            transform={transform}
             maxIterations={parameters.maxIterations}
             width={plotDimensions.width}
             height={plotDimensions.height}

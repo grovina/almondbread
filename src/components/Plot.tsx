@@ -1,7 +1,7 @@
 import { scaleLinear } from 'd3-scale';
 import { select } from 'd3-selection';
-import { zoom, zoomIdentity, ZoomTransform } from 'd3-zoom';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { zoom, ZoomTransform } from 'd3-zoom';
+import { useCallback, useEffect, useRef } from 'react';
 import { PlotOptions, PlotState, Point } from '../types';
 
 interface PlotProps {
@@ -9,6 +9,7 @@ interface PlotProps {
   state: PlotState;
   onPointClick: (point: Point) => void;
   onZoomChange: (transform: ViewTransform) => void;
+  transform: ZoomTransform;
   maxIterations: number;
   width: number;
   height: number;
@@ -20,9 +21,9 @@ interface ViewTransform {
   y: number;
 }
 
-export const Plot: React.FC<PlotProps> = ({ options, state, onPointClick, onZoomChange, maxIterations, width, height }) => {
+export const Plot: React.FC<PlotProps> = ({ options, state, onPointClick, onZoomChange, transform, maxIterations, width, height }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [transform, setTransform] = useState<ZoomTransform>(zoomIdentity);
+  const zoomBehaviorRef = useRef<any>(null);
 
   // Define initial scales
   const xScale = scaleLinear()
@@ -39,7 +40,6 @@ export const Plot: React.FC<PlotProps> = ({ options, state, onPointClick, onZoom
     const zoomBehavior = zoom<HTMLCanvasElement, unknown>()
       .scaleExtent([0.1, 50])
       .on('zoom', (event) => {
-        setTransform(event.transform);
         onZoomChange({
           k: event.transform.k,
           x: event.transform.x,
@@ -49,6 +49,8 @@ export const Plot: React.FC<PlotProps> = ({ options, state, onPointClick, onZoom
 
     select(canvasRef.current)
       .call(zoomBehavior);
+
+    zoomBehaviorRef.current = zoomBehavior;
 
     return () => {
       select(canvasRef.current).on('.zoom', null);
