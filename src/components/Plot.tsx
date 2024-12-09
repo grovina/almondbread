@@ -38,7 +38,6 @@ export const Plot: React.FC<PlotProps> = ({ options, state, onPointClick, onZoom
     if (!canvasRef.current) return;
 
     const zoomBehavior = zoom<HTMLCanvasElement, unknown>()
-      .scaleExtent([0.1, 50])
       .on('zoom', (event) => {
         onZoomChange({
           k: event.transform.k,

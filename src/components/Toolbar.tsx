@@ -8,6 +8,7 @@ interface ToolbarProps {
   onClear: () => void;
   onShowMandelbrot: () => void;
   isGridEnabled: boolean;
+  zoomLevel: number;
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({
@@ -17,7 +18,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onToggleGrid,
   onClear,
   onShowMandelbrot,
-  isGridEnabled
+  isGridEnabled,
+  zoomLevel
 }) => {
   return (
     <div className="toolbar">
@@ -85,6 +87,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           <path d="M12 6c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6z"/>
         </svg>
       </button>
+
+      <div className="zoom-level">
+        {`${zoomLevel.toFixed(1)}x`}
+      </div>
     </div>
   );
 }; 

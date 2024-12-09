@@ -170,10 +170,18 @@ export const App: React.FC = () => {
 
     console.log('Requesting Mandelbrot set for:', visibleXRange, visibleYRange);
 
-    // Calculate resolution based on zoom level
-    const resolution = Math.min(plotDimensions.width, plotDimensions.height) / 200;
+    // Fixed resolution for the entire view
+    const FIXED_RESOLUTION = 1000;
+    const aspectRatio = plotDimensions.width / plotDimensions.height;
+    const resolution = {
+      x: FIXED_RESOLUTION,
+      y: Math.ceil(FIXED_RESOLUTION / aspectRatio)
+    };
 
     setRenderProgress(0);
+
+    // Clear existing points before starting new computation
+    setPlotState(prev => ({ ...prev, points: new Map() }));
 
     rendererRef.current?.computeMandelbrot(
       visibleXRange,
@@ -209,6 +217,7 @@ export const App: React.FC = () => {
         onClear={handleClear}
         onShowMandelbrot={handleShowMandelbrot}
         isGridEnabled={plotState.gridEnabled}
+        zoomLevel={transform.k}
       />
       
       <div className="main-content">
